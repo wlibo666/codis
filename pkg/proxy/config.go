@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/c4pt0r/cfg"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../utils/log"
 )
 
 type Config struct {

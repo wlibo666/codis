@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/wandoulabs/codis/pkg/utils/errors"
+	"../utils/errors"
 	"github.com/wandoulabs/zkhelper"
 )
 

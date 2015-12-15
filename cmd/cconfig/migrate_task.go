@@ -10,10 +10,10 @@ import (
 
 	"github.com/wandoulabs/zkhelper"
 
-	"github.com/wandoulabs/codis/pkg/models"
-	"github.com/wandoulabs/codis/pkg/utils"
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../../pkg/models"
+	"../../pkg/utils"
+	"../../pkg/utils/errors"
+	"../../pkg/utils/log"
 )
 
 type MigrateTaskInfo struct {
@@ -104,6 +104,7 @@ func (t *MigrateTask) migrateSingleSlot(slotId int, to int) error {
 	}
 
 	// modify slot status
+	// 现在的情况是一旦代理没有确认，则直接不进行迁移操作了
 	if err := s.SetMigrateStatus(t.zkConn, from, to); err != nil {
 		log.ErrorErrorf(err, "set migrate status failed")
 		return err

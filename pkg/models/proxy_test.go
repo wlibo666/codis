@@ -6,7 +6,7 @@ package models
 import (
 	"testing"
 
-	"github.com/wandoulabs/codis/pkg/utils/assert"
+	"../utils/assert"
 	"github.com/wandoulabs/zkhelper"
 )
 

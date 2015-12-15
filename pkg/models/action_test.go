@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wandoulabs/codis/pkg/utils"
-	"github.com/wandoulabs/codis/pkg/utils/assert"
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../utils"
+	"../utils/assert"
+	"../utils/errors"
+	"../utils/log"
 	"github.com/wandoulabs/zkhelper"
 )
 

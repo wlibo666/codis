@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wandoulabs/codis/pkg/models"
-	"github.com/wandoulabs/codis/pkg/proxy/router"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../models"
+	"../proxy/router"
+	"../utils/log"
 	"github.com/wandoulabs/go-zookeeper/zk"
 	topo "github.com/wandoulabs/go-zookeeper/zk"
 )
@@ -40,6 +40,8 @@ type Server struct {
 	stop sync.Once
 }
 
+// changed WangChunyan
+// addr 地址为指定的IP地址端口，发送给zookeeper，但是默认监听所有端口
 func New(addr string, debugVarAddr string, conf *Config) *Server {
 	log.Infof("create proxy with config: %+v", conf)
 
@@ -59,6 +61,7 @@ func New(addr string, debugVarAddr string, conf *Config) *Server {
 
 	s := &Server{conf: conf, lastActionSeq: -1, groups: make(map[int]int)}
 	s.topo = NewTopo(conf.productName, conf.zkAddr, conf.fact, conf.provider, conf.zkSessionTimeout)
+	s.topo.proxyServer = s // changed WangChunyan
 	s.info.Id = conf.proxyId
 	s.info.State = models.PROXY_STATE_OFFLINE
 	s.info.Addr = proxyHost + ":" + strings.Split(addr, ":")[1]
@@ -69,7 +72,9 @@ func New(addr string, debugVarAddr string, conf *Config) *Server {
 
 	log.Infof("proxy info = %+v", s.info)
 
-	if l, err := net.Listen(conf.proto, addr); err != nil {
+	// changed WangChunyan
+	// addr为指定的IP地址，但是需要监控所有的网卡(Listen不支持指定多IP参数)
+	if l, err := net.Listen(conf.proto, ":"+strings.Split(addr, ":")[1]); err != nil {
 		log.PanicErrorf(err, "open listener failed")
 	} else {
 		s.listener = l
@@ -136,11 +141,18 @@ func (s *Server) handleConns() {
 			go x.Serve(s.router, s.conf.maxPipeline)
 		}
 	}()
-
+	var acceptFailTimes int64 = 0
 	for {
 		c, err := s.listener.Accept()
 		if err != nil {
-			return
+			acceptFailTimes++
+			// changed WangChunyan
+			// date: 2015.12.01 15:23:00
+			// 接受外部连接出错时起始不应该退出,可以打印警告信息让管理员知道
+			if acceptFailTimes%10000 == 0 {
+				log.Warnf("listener.Accept failed times [%v],error [%v],will sllep 1s.", acceptFailTimes, err.Error())
+				time.Sleep(time.Second)
+			}
 		} else {
 			ch <- c
 		}
@@ -174,24 +186,36 @@ func (s *Server) close() {
 func (s *Server) rewatchProxy() {
 	_, err := s.topo.WatchNode(path.Join(models.GetProxyPath(s.topo.ProductName), s.info.Id), s.evtbus)
 	if err != nil {
-		log.PanicErrorf(err, "watch node failed")
+		// changed WangChunyan
+		//log.PanicErrorf(err, "watch node failed")
+		log.Warn("Server rewatchProxy() failed,err [%v]", err.Error())
+		s.topo.reConnZk()
 	}
 }
 
 func (s *Server) rewatchNodes() []string {
 	nodes, err := s.topo.WatchChildren(models.GetWatchActionPath(s.topo.ProductName), s.evtbus)
 	if err != nil {
-		log.PanicErrorf(err, "watch children failed")
+		var empty []string
+		// changed WangChunyan
+		// log.PanicErrorf(err, "watch children failed")
+		log.Warn("Server rewatchNodes() failed,err:[%v]", err.Error())
+		s.topo.reConnZk()
+		return empty
 	}
 	return nodes
 }
 
 func (s *Server) register() {
+	// changed WangChunyan
 	if _, err := s.topo.CreateProxyInfo(&s.info); err != nil {
-		log.PanicErrorf(err, "create proxy node failed")
+		log.Warnf("Server register() create proxy node failed,err: %v", err.Error())
+		//log.PanicErrorf(err, "create proxy node failed")
 	}
+	// changed WangChunyan
 	if _, err := s.topo.CreateProxyFenceNode(&s.info); err != nil && err != zk.ErrNodeExists {
-		log.PanicErrorf(err, "create fence node failed")
+		//log.PanicErrorf(err, "create fence node failed")
+		log.Warn("Server register() create fence node failed,err: %v", err.Error())
 	}
 	log.Warn("********** Attention **********")
 	log.Warn("You should use `kill {pid}` rather than `kill -9 {pid}` to stop me,")
@@ -206,13 +230,17 @@ func (s *Server) markOffline() {
 
 func (s *Server) waitOnline() bool {
 	for {
+		// changed WangChunyan
 		info, err := s.topo.GetProxyInfo(s.info.Id)
 		if err != nil {
-			log.PanicErrorf(err, "get proxy info failed: %s", s.info.Id)
+			//log.PanicErrorf(err, "waitOnline:get proxy info failed: %s", s.info.Id)
+			log.Warnf("Server waitOnline() failed,err: %v", err.Error())
+			time.Sleep(3 * time.Second)
+			continue
 		}
 		switch info.State {
 		case models.PROXY_STATE_MARK_OFFLINE:
-			log.Infof("mark offline, proxy got offline event: %s", s.info.Id)
+			log.Infof("waitOnline mark offline, proxy got offline event: %s", s.info.Id)
 			s.markOffline()
 			return false
 		case models.PROXY_STATE_ONLINE:
@@ -277,7 +305,9 @@ func (s *Server) resetSlot(i int) {
 func (s *Server) fillSlot(i int) {
 	slotInfo, slotGroup, err := s.topo.GetSlotByIndex(i)
 	if err != nil {
-		log.PanicErrorf(err, "get slot by index failed", i)
+		// changed WangChunyan
+		// fillSlot失败应该退出
+		log.PanicErrorf(err, "Server fillSlot() get slot by index failed", i)
 	}
 
 	var from string
@@ -285,10 +315,14 @@ func (s *Server) fillSlot(i int) {
 	if slotInfo.State.Status == models.SLOT_STATUS_MIGRATE {
 		fromGroup, err := s.topo.GetGroup(slotInfo.State.MigrateStatus.From)
 		if err != nil {
+			// changed WangChunyan
+			// fillSlot失败应该退出
 			log.PanicErrorf(err, "get migrate from failed")
 		}
 		from = groupMaster(*fromGroup)
 		if from == addr {
+			// changed WangChunyan
+			// fillSlot失败应该退出
 			log.Panicf("set slot %04d migrate from %s to %s", i, from, addr)
 		}
 	}
@@ -307,6 +341,7 @@ func (s *Server) onSlotRangeChange(param *models.SlotMultiSetParam) {
 		case models.SLOT_STATUS_ONLINE:
 			s.fillSlot(i)
 		default:
+			// changed WangChunyan
 			log.Panicf("can not handle status %v", param.Status)
 		}
 	}
@@ -331,17 +366,23 @@ func (s *Server) responseAction(seq int64) {
 
 func (s *Server) getActionObject(seq int, target interface{}) {
 	act := &models.Action{Target: target}
+	// changed WangChunyan
 	err := s.topo.GetActionWithSeqObject(int64(seq), act)
 	if err != nil {
-		log.PanicErrorf(err, "get action object failed, seq = %d", seq)
+		//log.PanicErrorf(err, "get action object failed, seq = %d", seq)
+		log.Warnf("Server getActionObject failed,err: %v", err.Error())
+		s.topo.reConnZk()
 	}
 	log.Infof("action %+v", act)
 }
 
 func (s *Server) checkAndDoTopoChange(seq int) bool {
 	act, err := s.topo.GetActionWithSeq(int64(seq))
+	// changed WangChunyan
 	if err != nil { //todo: error is not "not exist"
-		log.PanicErrorf(err, "action failed, seq = %d", seq)
+		//log.PanicErrorf(err, "action failed, seq = %d", seq)
+		log.Warnf("checkAndDoTopoChange failed,err :%v", err.Error())
+		return false
 	}
 
 	if !needResponse(act.Receivers, s.info) { //no need to response
@@ -367,6 +408,7 @@ func (s *Server) checkAndDoTopoChange(seq int) bool {
 		s.getActionObject(seq, param)
 		s.onSlotRangeChange(param)
 	default:
+		// changed WangChunyan
 		log.Panicf("unknown action %+v", act)
 	}
 	return true
@@ -376,15 +418,21 @@ func (s *Server) processAction(e interface{}) {
 	if strings.Index(getEventPath(e), models.GetProxyPath(s.topo.ProductName)) == 0 {
 		info, err := s.topo.GetProxyInfo(s.info.Id)
 		if err != nil {
-			log.PanicErrorf(err, "get proxy info failed: %s", s.info.Id)
+			// changed WangChunyan
+			// date: 2015.12.02 18:34:00
+			// 本来获取代理信息出错直接就退出了，此处改为记录信息不退出
+			//log.PanicErrorf(err, "processAction :get proxy info failed: %s", s.info.Id)
+			log.Errorf("processAction :get proxy info failed: %s,err %v", s.info.Id, err.Error())
+			return
 		}
 		switch info.State {
 		case models.PROXY_STATE_MARK_OFFLINE:
-			log.Infof("mark offline, proxy got offline event: %s", s.info.Id)
+			log.Infof("processAction mark offline, proxy got offline event: %s", s.info.Id)
 			s.markOffline()
 		case models.PROXY_STATE_ONLINE:
 			s.rewatchProxy()
 		default:
+			// changed WangChunyan
 			log.Panicf("unknown proxy state %v", info)
 		}
 		return
@@ -395,7 +443,10 @@ func (s *Server) processAction(e interface{}) {
 
 	seqs, err := models.ExtraSeqList(nodes)
 	if err != nil {
-		log.PanicErrorf(err, "get seq list failed")
+		// changed WangChunyan
+		log.Warnf("processAction failed at ExtraSeqList,err: %v", err.Error())
+		return
+		//log.PanicErrorf(err, "get seq list failed")
 	}
 
 	if len(seqs) == 0 || !s.topo.IsChildrenChangedEvent(e) {
@@ -418,9 +469,12 @@ func (s *Server) processAction(e interface{}) {
 
 	actions := seqs[index:]
 	for _, seq := range actions {
+		// changed WangChunyan
 		exist, err := s.topo.Exist(path.Join(s.topo.GetActionResponsePath(seq), s.info.Id))
 		if err != nil {
-			log.PanicErrorf(err, "get action failed")
+			//log.PanicErrorf(err, "get action failed")
+			log.Warnf("get action failed,err: %v", err.Error())
+			return
 		}
 		if exist {
 			continue

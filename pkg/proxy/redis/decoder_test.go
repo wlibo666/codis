@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/wandoulabs/codis/pkg/utils/assert"
+	"../utils/assert"
 )
 
 func TestBtoi(t *testing.T) {

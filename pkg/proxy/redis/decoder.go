@@ -9,7 +9,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/wandoulabs/codis/pkg/utils/errors"
+	"../../utils/errors"
 )
 
 var (

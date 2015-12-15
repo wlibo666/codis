@@ -9,10 +9,10 @@ import (
 
 	"github.com/wandoulabs/zkhelper"
 
-	"github.com/wandoulabs/codis/pkg/models"
-	"github.com/wandoulabs/codis/pkg/utils"
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../../pkg/models"
+	"../../pkg/utils"
+	"../../pkg/utils/errors"
+	"../../pkg/utils/log"
 )
 
 type NodeInfo struct {

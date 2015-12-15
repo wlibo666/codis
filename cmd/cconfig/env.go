@@ -11,8 +11,8 @@ import (
 
 	"github.com/wandoulabs/zkhelper"
 
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../../pkg/utils/errors"
+	"../../pkg/utils/log"
 )
 
 type Env interface {

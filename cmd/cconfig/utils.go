@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../../pkg/utils/errors"
+	"../../pkg/utils/log"
 )
 
 const (

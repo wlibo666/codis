@@ -8,8 +8,8 @@ import (
 
 	"github.com/docopt/docopt-go"
 
-	"github.com/wandoulabs/codis/pkg/models"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../../pkg/models"
+	"../../pkg/utils/log"
 )
 
 func cmdProxy(argv []string) (err error) {

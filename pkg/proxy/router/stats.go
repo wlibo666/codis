@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/wandoulabs/codis/pkg/utils/atomic2"
+	"../../utils/atomic2"
 )
 
 type OpStats struct {

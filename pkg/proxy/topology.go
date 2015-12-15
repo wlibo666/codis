@@ -6,12 +6,14 @@ package proxy
 import (
 	"encoding/json"
 	"path"
+	"strings"
+	"time"
 
 	topo "github.com/wandoulabs/go-zookeeper/zk"
 
-	"github.com/wandoulabs/codis/pkg/models"
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../models"
+	"../utils/errors"
+	"../utils/log"
 	"github.com/wandoulabs/zkhelper"
 )
 
@@ -29,6 +31,7 @@ type Topology struct {
 	fact             ZkFactory
 	provider         string
 	zkSessionTimeout int
+	proxyServer      *Server // changed WangChunyan 此处记录代理的地址
 }
 
 func (top *Topology) GetGroup(groupId int) (*models.ServerGroup, error) {
@@ -71,9 +74,17 @@ func NewTopo(ProductName string, zkAddr string, f ZkFactory, provider string, zk
 
 func (top *Topology) InitZkConn() {
 	var err error
-	top.zkConn, err = top.fact(top.zkAddr, top.zkSessionTimeout)
-	if err != nil {
-		log.PanicErrorf(err, "init failed")
+	var retryZkConnTimes int = 30
+	// changed WangChunyan
+	for i := 0; i < retryZkConnTimes; i++ {
+		top.zkConn, err = top.fact(top.zkAddr, top.zkSessionTimeout)
+		if err != nil {
+			log.Warn("InitZkConn failed at times [%d],error [%v]", i, err.Error())
+			time.Sleep(time.Second)
+			continue
+			//log.PanicErrorf(err, "InitZkConn init failed")
+		}
+		break
 	}
 }
 
@@ -141,10 +152,27 @@ func (top *Topology) DoResponse(seq int, pi *models.ProxyInfo) error {
 	return err
 }
 
+// Add WangChunyan
+func (top *Topology) reConnZk() {
+	log.Warn("some errors happened, now will exec Topology reConnZk()")
+	top.zkConn.Close()
+	top.InitZkConn()
+	log.Info("now will register proxy again")
+	top.proxyServer.register()
+}
+
 func (top *Topology) doWatch(evtch <-chan topo.Event, evtbus chan interface{}) {
 	e := <-evtch
+
+	// changed WangChunyan
+	// date: 2015.12.02 13:38:00
+	// 从zookeeper收到session超时消息
+	// 可以尝试让代理重连zookeeper，而不是代理退出
 	if e.State == topo.StateExpired || e.Type == topo.EventNotWatching {
-		log.Panicf("session expired: %+v", e)
+		//log.Panicf("session expired: %+v", e)
+		log.Warn("doWatch() event state is StateExpired,now will reconnect to zookeeper...")
+		top.reConnZk()
+		return
 	}
 
 	log.Warnf("topo event %+v", e)
@@ -154,6 +182,13 @@ func (top *Topology) doWatch(evtch <-chan topo.Event, evtbus chan interface{}) {
 	//case topo.EventNodeDataChanged:
 	case topo.EventNodeChildrenChanged: //only care children changed
 		//todo:get changed node and decode event
+	// changed WangChunyan
+	// zk删除自身节点时重新创建proxy节点
+	case topo.EventNodeDeleted:
+		if strings.Contains(e.Path, top.proxyServer.conf.proxyId) {
+			log.Warnf("now will create proxy info [%s] again", e.Path)
+			top.CreateProxyInfo(&top.proxyServer.info)
+		}
 	default:
 		log.Warnf("%+v", e)
 	}

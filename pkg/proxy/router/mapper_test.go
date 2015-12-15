@@ -6,8 +6,8 @@ package router
 import (
 	"testing"
 
-	"github.com/wandoulabs/codis/pkg/proxy/redis"
-	"github.com/wandoulabs/codis/pkg/utils/assert"
+	"../redis"
+	"../../utils/assert"
 )
 
 func TestGetOpStr(t *testing.T) {

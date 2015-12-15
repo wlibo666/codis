@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../utils/errors"
+	"../utils/log"
 	"github.com/wandoulabs/go-zookeeper/zk"
 	"github.com/wandoulabs/zkhelper"
 )
@@ -111,13 +111,19 @@ func WaitForReceiverWithTimeout(zkConn zkhelper.Conn, productName string, action
 	}
 	log.Warn("proxies didn't responed: ", proxyIds)
 	// set offline proxies
+	// changed WangChunyan
+	// date: 2015.12.01 15:27:00
+	// 此处本来是发现没有响应的代理后将代理标记为offline
+	// 现在先注释掉标记为offline的部分，不删除action路径，则后续代理还可能收到该action
+	// 可以通过其他方式检测代理(ping/tcp连接)是否还活着，如果确认已经挂了，再设置其状态为offline
 	for id, _ := range proxyIds {
-		log.Errorf("mark proxy %s to PROXY_STATE_MARK_OFFLINE", id)
-		if err := SetProxyStatus(zkConn, productName, id, PROXY_STATE_MARK_OFFLINE); err != nil {
-			return errors.Trace(err)
-		}
+		log.Errorf("proxy %s is timeout for action %s", id, actionZkPath)
+		//if err := SetProxyStatus(zkConn, productName, id, PROXY_STATE_MARK_OFFLINE); err != nil {
+		//	return errors.Trace(err)
+		//}
 	}
-	return ErrReceiverTimeout
+	return nil
+	//return ErrReceiverTimeout
 }
 
 func GetActionSeqList(zkConn zkhelper.Conn, productName string) ([]int, error) {
@@ -222,6 +228,9 @@ func CreateActionRootPath(zkConn zkhelper.Conn, path string) error {
 
 func NewAction(zkConn zkhelper.Conn, productName string, actionType ActionType, target interface{}, desc string, needConfirm bool) error {
 	// new action with default timeout: 30s
+	// changed WangChunyan
+	// date: 2015.12.01 18:30:00
+	// 本来超时时间为30秒，现改为60秒，因为遇到过30超时的情况，但是代理是正常的
 	return NewActionWithTimeout(zkConn, productName, actionType, target, desc, needConfirm, 30*1000)
 }
 

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wandoulabs/codis/pkg/utils/trace"
+	"../trace"
 )
 
 var TraceEnabled = true

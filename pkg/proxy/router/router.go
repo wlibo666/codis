@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wandoulabs/codis/pkg/models"
-	"github.com/wandoulabs/codis/pkg/utils/errors"
-	"github.com/wandoulabs/codis/pkg/utils/log"
+	"../../models"
+	"../../utils/errors"
+	"../../utils/log"
 )
 
 const MaxSlotNum = models.DEFAULT_SLOT_NUM

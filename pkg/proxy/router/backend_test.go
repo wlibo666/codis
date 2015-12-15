@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wandoulabs/codis/pkg/proxy/redis"
-	"github.com/wandoulabs/codis/pkg/utils/assert"
+	"../redis"
+	"../../utils/assert"
 )
 
 func TestBackend(t *testing.T) {
