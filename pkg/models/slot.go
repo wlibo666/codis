@@ -147,8 +147,11 @@ func SetSlotRange(zkConn zkhelper.Conn, productName string, fromSlot, toSlot, gr
 		if err != nil {
 			return errors.Trace(err)
 		}
-		if s.State.Status != SLOT_STATUS_OFFLINE {
-			return errors.New(fmt.Sprintf("slot %d is not offline, if you want to change the group for a slot, use migrate", s.Id))
+		// if slot is not online,can not set it's status,eg migrate
+		// if migrate failed,i should set slot to be online.
+
+		if s.State.Status != SLOT_STATUS_OFFLINE && s.State.Status != SLOT_STATUS_MIGRATE {
+			return errors.New(fmt.Sprintf("slot %d is not offline or migrate, can not set slot status now.", s.Id))
 		}
 		s.GroupId = groupId
 		s.State.Status = status
