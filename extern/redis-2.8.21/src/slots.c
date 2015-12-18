@@ -216,7 +216,8 @@ slotsmgrt_cleanup() {
     dictEntry *de;
     while((de = dictNext(di)) != NULL) {
         slotsmgrt_sockfd *pfd = dictGetVal(de);
-        if ((server.unixtime - pfd->lasttime) > 15) {
+	// slot's key value is big,may cost mucher time.
+        if ((server.unixtime - pfd->lasttime) > 30) {
             redisLog(REDIS_WARNING, "slotsmgrt: timeout target %s, lasttime = %ld, now = %ld",
                    (char *)dictGetKey(de), pfd->lasttime, server.unixtime);
             dictDelete(server.slotsmgrt_cached_sockfds, dictGetKey(de));

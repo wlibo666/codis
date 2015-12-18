@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/docopt/docopt-go"
-	"github.com/ngaut/gostats"
+	//"github.com/ngaut/gostats"
 	"../../pkg/proxy"
 	"../../pkg/proxy/router"
 	"../../pkg/utils"
@@ -89,6 +89,15 @@ func setCrashLog(file string) {
 func handleSetLogLevel(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	setLogLevel(r.Form.Get("level"))
+}
+
+func handleDebugVars(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	var m = make(map[string]interface{})
+	m["ops"] = router.OpCounts()
+	b,_ := json.Marshal(m)
+	str := fmt.Sprintf("{ \"router\": %s}", string(b))
+	fmt.Fprintf(w, str)
 }
 
 func checkUlimit(min int) {
@@ -166,6 +175,7 @@ func main() {
 	runtime.GOMAXPROCS(cpus)
 
 	http.HandleFunc("/setloglevel", handleSetLogLevel)
+	http.HandleFunc("/debug/vars", handleDebugVars)
 	go func() {
 		err := http.ListenAndServe(httpAddr, nil)
 		log.PanicError(err, "http debug server quit")
@@ -181,7 +191,7 @@ func main() {
 
 	s := proxy.New(addr, httpAddr, conf)
 	defer s.Close()
-
+	/*
 	stats.PublishJSONFunc("router", func() string {
 		var m = make(map[string]interface{})
 		m["ops"] = router.OpCounts()
@@ -193,7 +203,7 @@ func main() {
 		}
 		b, _ := json.Marshal(m)
 		return string(b)
-	})
+	})*/
 
 	go func() {
 		<-c

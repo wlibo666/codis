@@ -71,7 +71,8 @@ func apiOverview() (int, string) {
 		for _, instance := range instances {
 			info, err := utils.GetRedisStat(instance, globalEnv.Password())
 			if err != nil {
-				log.ErrorErrorf(err, "get redis stat failed")
+				//log.ErrorErrorf(err, "get redis stat failed")
+				log.Warn("get redis stat failed,redis may be too busy.")
 			}
 			redisInfos = append(redisInfos, info)
 		}

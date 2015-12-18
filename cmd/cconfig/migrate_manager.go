@@ -79,7 +79,9 @@ func (m *MigrateManager) loop() error {
 		}
 		err = t.run()
 		if err != nil {
-			log.ErrorErrorf(err, "migrate failed")
+			log.ErrorErrorf(err, "migrate failed,now will delete this task,taskid[%s],slotid[%d] and sleep 90s.", t.Id, t.SlotId)
+			t.UpdateFinish()
+			time.Sleep(time.Second * 90)
 		}
 	}
 }

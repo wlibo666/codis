@@ -28,7 +28,8 @@ func DialToTimeout(addr string, passwd string, readTimeout, writeTimeout time.Du
 }
 
 func DialTo(addr string, passwd string) (redis.Conn, error) {
-	return DialToTimeout(addr, passwd, time.Second*5, time.Second*5)
+	// if key is too big,may be cost mucher time.
+	return DialToTimeout(addr, passwd, time.Second*30, time.Second*30)
 }
 
 func SlotsInfo(addr, passwd string, fromSlot, toSlot int) (map[int]int, error) {
