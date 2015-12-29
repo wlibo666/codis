@@ -4,20 +4,21 @@
 package router
 
 import (
+	"../../utils/atomic2"
+	"../../utils/errors"
+	"../../utils/log"
+	"../redis"
 	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
-
-	"../redis"
-	"../../utils/atomic2"
-	"../../utils/errors"
-	"../../utils/log"
 )
 
 type Session struct {
+	router *Router
 	*redis.Conn
 
 	Ops int64
@@ -46,12 +47,12 @@ func (s *Session) String() string {
 	return string(b)
 }
 
-func NewSession(c net.Conn, auth string) *Session {
-	return NewSessionSize(c, auth, 1024*32, 1800)
+func NewSession(r *Router, c net.Conn, auth string) *Session {
+	return NewSessionSize(r, c, auth, 1024*32, 1800)
 }
 
-func NewSessionSize(c net.Conn, auth string, bufsize int, timeout int) *Session {
-	s := &Session{CreateUnix: time.Now().Unix(), auth: auth}
+func NewSessionSize(r *Router, c net.Conn, auth string, bufsize int, timeout int) *Session {
+	s := &Session{router: r, CreateUnix: time.Now().Unix(), auth: auth}
 	s.Conn = redis.NewConnSize(c, bufsize)
 	s.Conn.ReaderTimeout = time.Second * time.Duration(timeout)
 	s.Conn.WriterTimeout = time.Second * 30
@@ -65,9 +66,15 @@ func (s *Session) Close() error {
 
 func (s *Session) Serve(d Dispatcher, maxPipeline int) {
 	var errlist errors.ErrorList
+	// Add by WangChunyan,receive a new connection
+	incrConnReqs()
 	defer func() {
 		if err := errlist.First(); err != nil {
 			log.Infof("session [%p] closed: %s, error = %s", s, s, err)
+			// Add by WangChunyan,process connection failed
+			if strings.Contains(err.Error(), "reset by peer") == false && strings.Contains(err.Error(), "EOF") == false {
+				incrFailConnReqs()
+			}
 		} else {
 			log.Infof("session [%p] closed: %s, quit", s, s)
 		}
@@ -101,6 +108,8 @@ func (s *Session) loopReader(tasks chan<- *Request, d Dispatcher) error {
 		if err != nil {
 			return err
 		}
+		// Add by WangChunyan,a new redis command
+		incrAllRequests()
 		r, err := s.handleRequest(resp, d)
 		if err != nil {
 			return err
@@ -120,9 +129,17 @@ func (s *Session) loopWriter(tasks <-chan *Request) error {
 	for r := range tasks {
 		resp, err := s.handleResponse(r)
 		if err != nil {
+			// Add by WangChunyan
+			incrFailRequests()
+			incrFailOpStats(r.OpStr, microseconds()-r.Start)
+			incrRedisFailOpStats(r.RedisAddr, r.OpStr, microseconds()-r.Start)
 			return err
 		}
 		if err := p.Encode(resp, len(tasks) == 0); err != nil {
+			// Add by WangChunyan
+			incrFailRequests()
+			incrFailOpStats(r.OpStr, microseconds()-r.Start)
+			incrRedisFailOpStats(r.RedisAddr, r.OpStr, microseconds()-r.Start)
 			return err
 		}
 	}
@@ -146,6 +163,7 @@ func (s *Session) handleResponse(r *Request) (*redis.Resp, error) {
 		return nil, ErrRespIsRequired
 	}
 	incrOpStats(r.OpStr, microseconds()-r.Start)
+	incrRedisOpStats(r.RedisAddr, r.OpStr, microseconds()-r.Start)
 	return resp, nil
 }
 
@@ -163,11 +181,12 @@ func (s *Session) handleRequest(resp *redis.Resp, d Dispatcher) (*Request, error
 	s.Ops++
 
 	r := &Request{
-		OpStr:  opstr,
-		Start:  usnow,
-		Resp:   resp,
-		Wait:   &sync.WaitGroup{},
-		Failed: &s.failed,
+		OpStr:     opstr,
+		Start:     usnow,
+		RedisAddr: s.router.GetRedisAddrByRespOP(resp, opstr),
+		Resp:      resp,
+		Wait:      &sync.WaitGroup{},
+		Failed:    &s.failed,
 	}
 
 	if opstr == "QUIT" {
@@ -260,8 +279,9 @@ func (s *Session) handleRequestMGet(r *Request, d Dispatcher) (*Request, error) 
 	var sub = make([]*Request, nkeys)
 	for i := 0; i < len(sub); i++ {
 		sub[i] = &Request{
-			OpStr: r.OpStr,
-			Start: r.Start,
+			OpStr:     r.OpStr,
+			Start:     r.Start,
+			RedisAddr: s.router.GetRedisAddrByRequest(r),
 			Resp: redis.NewArray([]*redis.Resp{
 				r.Resp.Array[0],
 				r.Resp.Array[i+1],
@@ -306,8 +326,9 @@ func (s *Session) handleRequestMSet(r *Request, d Dispatcher) (*Request, error) 
 	var sub = make([]*Request, nblks/2)
 	for i := 0; i < len(sub); i++ {
 		sub[i] = &Request{
-			OpStr: r.OpStr,
-			Start: r.Start,
+			OpStr:     r.OpStr,
+			Start:     r.Start,
+			RedisAddr: s.router.GetRedisAddrByRequest(r),
 			Resp: redis.NewArray([]*redis.Resp{
 				r.Resp.Array[0],
 				r.Resp.Array[i*2+1],
@@ -347,8 +368,9 @@ func (s *Session) handleRequestMDel(r *Request, d Dispatcher) (*Request, error) 
 	var sub = make([]*Request, nkeys)
 	for i := 0; i < len(sub); i++ {
 		sub[i] = &Request{
-			OpStr: r.OpStr,
-			Start: r.Start,
+			OpStr:     r.OpStr,
+			Start:     r.Start,
+			RedisAddr: s.router.GetRedisAddrByRequest(r),
 			Resp: redis.NewArray([]*redis.Resp{
 				r.Resp.Array[0],
 				r.Resp.Array[i+1],

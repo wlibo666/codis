@@ -91,11 +91,41 @@ func handleSetLogLevel(w http.ResponseWriter, r *http.Request) {
 	setLogLevel(r.Form.Get("level"))
 }
 
+// Add by WangChunyan,for test,should not use
+/*func printAllRedisStats() {
+	allredisop := router.GetAllRedisOpStats()
+	var i int = len(allredisop)
+	log.Infof("state redis len:%d", i)
+
+	for _, redisop := range allredisop {
+		log.Infof("redisop addr:%s", redisop.RedisAddr)
+		for _, cmdop := range redisop.Cmdmap {
+			log.Infof("cmd:%s,call:%d", cmdop.OpStr(), cmdop.Calls())
+		}
+	}
+}*/
+
 func handleDebugVars(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+	//r.ParseForm()
 	var m = make(map[string]interface{})
 	m["ops"] = router.OpCounts()
-	b,_ := json.Marshal(m)
+	//printAllRedisStats()
+	b, _ := json.Marshal(m)
+	str := fmt.Sprintf("{ \"router\": %s}", string(b))
+	fmt.Fprintf(w, str)
+}
+
+func handleMoniData(w http.ResponseWriter, r *http.Request) {
+	//r.ParseForm()
+	var m = make(map[string]interface{})
+	m["conn_num"] = router.AllConns()
+	m["conn_fail_num"] = router.FailConns()
+	m["op_num"] = router.AllReqs()
+	m["op_fail_num"] = router.FailReqs()
+	m["op_succ_num"] = router.OpCounts()
+	m["cmd_proxy"] = router.GetAllOpStats()
+	m["cmd_redis"] = router.GetAllRedisOpStats()
+	b, _ := json.Marshal(m)
 	str := fmt.Sprintf("{ \"router\": %s}", string(b))
 	fmt.Fprintf(w, str)
 }
@@ -176,6 +206,7 @@ func main() {
 
 	http.HandleFunc("/setloglevel", handleSetLogLevel)
 	http.HandleFunc("/debug/vars", handleDebugVars)
+	http.HandleFunc("/MoniData", handleMoniData)
 	go func() {
 		err := http.ListenAndServe(httpAddr, nil)
 		log.PanicError(err, "http debug server quit")
@@ -192,18 +223,18 @@ func main() {
 	s := proxy.New(addr, httpAddr, conf)
 	defer s.Close()
 	/*
-	stats.PublishJSONFunc("router", func() string {
-		var m = make(map[string]interface{})
-		m["ops"] = router.OpCounts()
-		m["cmds"] = router.GetAllOpStats()
-		m["info"] = s.Info()
-		m["build"] = map[string]interface{}{
-			"version": utils.Version,
-			"compile": utils.Compile,
-		}
-		b, _ := json.Marshal(m)
-		return string(b)
-	})*/
+		stats.PublishJSONFunc("router", func() string {
+			var m = make(map[string]interface{})
+			m["ops"] = router.OpCounts()
+			m["cmds"] = router.GetAllOpStats()
+			m["info"] = s.Info()
+			m["build"] = map[string]interface{}{
+				"version": utils.Version,
+				"compile": utils.Compile,
+			}
+			b, _ := json.Marshal(m)
+			return string(b)
+		})*/
 
 	go func() {
 		<-c

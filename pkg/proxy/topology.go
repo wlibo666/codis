@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"path"
 	"strings"
-	"sync"
+	//"sync"
 	"time"
 
 	topo "github.com/wandoulabs/go-zookeeper/zk"
@@ -85,9 +85,9 @@ func (top *Topology) InitZkConn() {
 			continue
 			//log.PanicErrorf(err, "InitZkConn init failed")
 		}
-		ZkMutexLock.Lock()
+		/*ZkMutexLock.Lock()
 		ZkClosedFlag = false
-		ZkMutexLock.Unlock()
+		ZkMutexLock.Unlock()*/
 
 		break
 	}
@@ -157,18 +157,18 @@ func (top *Topology) DoResponse(seq int, pi *models.ProxyInfo) error {
 	return err
 }
 
-var ZkClosedFlag bool = false
-var ZkMutexLock sync.Mutex
+//var ZkClosedFlag bool = false
+//var ZkMutexLock sync.Mutex
 
 // Add WangChunyan
 func (top *Topology) reConnZk() {
 	log.Warn("some errors happened, now will exec Topology reConnZk()")
-	ZkMutexLock.Lock()
+	/*ZkMutexLock.Lock()
 	if ZkClosedFlag == false {
 		top.zkConn.Close()
 	}
 	ZkClosedFlag = true
-	ZkMutexLock.Unlock()
+	ZkMutexLock.Unlock()*/
 	top.InitZkConn()
 	log.Info("now will register proxy again")
 	top.proxyServer.register()

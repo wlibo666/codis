@@ -6,8 +6,8 @@ package router
 import (
 	"sync"
 
-	"../redis"
 	"../../utils/atomic2"
+	"../redis"
 )
 
 type Dispatcher interface {
@@ -17,8 +17,9 @@ type Dispatcher interface {
 type Request struct {
 	OpStr string
 	Start int64
-
-	Resp *redis.Resp
+	// Add by WangChunyan
+	RedisAddr string
+	Resp      *redis.Resp
 
 	Coalesce func() error
 	Response struct {

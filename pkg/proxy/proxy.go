@@ -137,7 +137,7 @@ func (s *Server) handleConns() {
 
 	go func() {
 		for c := range ch {
-			x := router.NewSessionSize(c, s.conf.passwd, s.conf.maxBufSize, s.conf.maxTimeout)
+			x := router.NewSessionSize(s.router, c, s.conf.passwd, s.conf.maxBufSize, s.conf.maxTimeout)
 			go x.Serve(s.router, s.conf.maxPipeline)
 		}
 	}()

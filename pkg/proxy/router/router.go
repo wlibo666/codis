@@ -4,12 +4,12 @@
 package router
 
 import (
-	"strings"
-	"sync"
-
 	"../../models"
 	"../../utils/errors"
 	"../../utils/log"
+	"../redis"
+	"strings"
+	"sync"
 )
 
 const MaxSlotNum = models.DEFAULT_SLOT_NUM
@@ -91,6 +91,19 @@ func (s *Router) Dispatch(r *Request) error {
 	hkey := getHashKey(r.Resp, r.OpStr)
 	slot := s.slots[hashSlot(hkey)]
 	return slot.forward(r, hkey)
+}
+
+// Add by WangChunya
+func (s *Router) GetRedisAddrByRequest(r *Request) string {
+	hkey := getHashKey(r.Resp, r.OpStr)
+	slot := s.slots[hashSlot(hkey)]
+	return slot.backend.addr
+}
+
+func (s *Router) GetRedisAddrByRespOP(resp *redis.Resp, opstr string) string {
+	hkey := getHashKey(resp, opstr)
+	slot := s.slots[hashSlot(hkey)]
+	return slot.backend.addr
 }
 
 func (s *Router) getBackendConn(addr string) *SharedBackendConn {
