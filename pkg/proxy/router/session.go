@@ -70,7 +70,7 @@ func (s *Session) Serve(d Dispatcher, maxPipeline int) {
 	incrConnReqs()
 	defer func() {
 		if err := errlist.First(); err != nil {
-			log.Infof("session [%p] closed: %s, error = %s", s, s, err)
+			log.Warnf("session [%p] closed: %s, error = %s", s, s, err)
 			// Add by WangChunyan,process connection failed
 			if strings.Contains(err.Error(), "reset by peer") == false && strings.Contains(err.Error(), "EOF") == false {
 				incrFailConnReqs()
@@ -130,16 +130,23 @@ func (s *Session) loopWriter(tasks <-chan *Request) error {
 		resp, err := s.handleResponse(r)
 		if err != nil {
 			// Add by WangChunyan
+			// all fail redis command number
 			incrFailRequests()
-			incrFailOpStats(r.OpStr, microseconds()-r.Start)
-			incrRedisFailOpStats(r.RedisAddr, r.OpStr, microseconds()-r.Start)
+			// fail redis command by opstr
+			failtime := microseconds() - s.LastOpUnix
+			incrFailOpStats(r.OpStr, failtime)
+			// fail redis command by redis
+			incrRedisFailOpStats(r.RedisAddr, r.OpStr, failtime)
+			log.Warnf("handleResponse failed,OP[%s],redis[%s],failtime[%d] microsecond,err:%s", r.OpStr, r.RedisAddr, failtime, err.Error())
 			return err
 		}
 		if err := p.Encode(resp, len(tasks) == 0); err != nil {
 			// Add by WangChunyan
 			incrFailRequests()
-			incrFailOpStats(r.OpStr, microseconds()-r.Start)
-			incrRedisFailOpStats(r.RedisAddr, r.OpStr, microseconds()-r.Start)
+			failtime := microseconds() - s.LastOpUnix
+			incrFailOpStats(r.OpStr, failtime)
+			incrRedisFailOpStats(r.RedisAddr, r.OpStr, failtime)
+			log.Warnf("Encode failed,OP[%s],redis[%s],failtime[%d] microsecond,err:%s", r.OpStr, r.RedisAddr, failtime, failtime)
 			return err
 		}
 	}
@@ -177,7 +184,7 @@ func (s *Session) handleRequest(resp *redis.Resp, d Dispatcher) (*Request, error
 	}
 
 	usnow := microseconds()
-	s.LastOpUnix = usnow / 1e6
+	s.LastOpUnix = usnow
 	s.Ops++
 
 	r := &Request{

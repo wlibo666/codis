@@ -11,11 +11,11 @@ import (
 
 type OpStats struct {
 	opstr string
-	calls atomic2.Int64 // one operation call number
-	usecs atomic2.Int64 // one operation used time
+	calls atomic2.Int64 // one type operation call number
+	usecs atomic2.Int64 // one type operation used time
 	// add by WangChunyan
-	failCalls atomic2.Int64 // one operation failed number
-	failUsecs atomic2.Int64 // one operation failed time
+	failCalls atomic2.Int64 // one type operation failed number
+	failUsecs atomic2.Int64 // one type operation failed time
 }
 
 func (s *OpStats) OpStr() string {
