@@ -70,9 +70,9 @@ func (s *Session) Serve(d Dispatcher, maxPipeline int) {
 	incrConnReqs()
 	defer func() {
 		if err := errlist.First(); err != nil {
-			log.Warnf("session [%p] closed: %s, error = %s", s, s, err)
 			// Add by WangChunyan,process connection failed
-			if strings.Contains(err.Error(), "reset by peer") == false && strings.Contains(err.Error(), "EOF") == false {
+			if strings.Contains(err.Error(), "reset by peer") == false && strings.Contains(err.Error(), "EOF") == false && strings.Contains(err.Error(), "o timeout") == false {
+				log.Warnf("session [%p] closed: %s, error = %s", s, s, err)
 				incrFailConnReqs()
 			}
 		} else {
