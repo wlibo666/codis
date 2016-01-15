@@ -1,0 +1,12 @@
+# get all slot info from proxy,for monitor
+http://10.135.29.168:11000/slotsinfo
+
+# get moni data from proxy,contains connections,operation,cmd,for statistics,monitor
+http://10.135.29.168:11000/MoniData
+
+# get ops,for statistics
+http://10.135.29.168:11000/debug/vars
+
+# set log level,for debug
+http://10.135.29.168:11000/setloglevel?level=info
+

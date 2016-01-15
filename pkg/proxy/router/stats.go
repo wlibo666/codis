@@ -83,7 +83,7 @@ type StateRedisOp struct {
 	Cmdmap    []*OpStats
 }
 
-var cmdstats struct {
+var CmdStats struct {
 	requests atomic2.Int64 // all success redis command
 	// Add by WangChunyan
 	allRequests     atomic2.Int64 // all redis command
@@ -94,76 +94,76 @@ var cmdstats struct {
 	opmap           map[string]*OpStats
 	rwlck           sync.RWMutex
 
-	redisopmap map[string]*RedisOpStats
+	RedisOpMap map[string]*RedisOpStats
 }
 
 func init() {
-	cmdstats.opmap = make(map[string]*OpStats)
-	cmdstats.redisopmap = make(map[string]*RedisOpStats)
+	CmdStats.opmap = make(map[string]*OpStats)
+	CmdStats.RedisOpMap = make(map[string]*RedisOpStats)
 }
 
 func OpCounts() int64 {
-	return cmdstats.requests.Get()
+	return CmdStats.requests.Get()
 }
 
 // Add by WangChunyan
 func AllReqs() int64 {
-	return cmdstats.allRequests.Get()
+	return CmdStats.allRequests.Get()
 }
 
 func FailReqs() int64 {
-	return cmdstats.failRequests.Get()
+	return CmdStats.failRequests.Get()
 }
 
 func TimeoutReqs() int64 {
-	return cmdstats.timeoutRequests.Get()
+	return CmdStats.timeoutRequests.Get()
 }
 
 func AllConns() int64 {
-	return cmdstats.connReqs.Get()
+	return CmdStats.connReqs.Get()
 }
 
 func FailConns() int64 {
-	return cmdstats.failConnReqs.Get()
+	return CmdStats.failConnReqs.Get()
 }
 
 func GetOpStats(opstr string, create bool) *OpStats {
-	cmdstats.rwlck.RLock()
-	s := cmdstats.opmap[opstr]
-	cmdstats.rwlck.RUnlock()
+	CmdStats.rwlck.RLock()
+	s := CmdStats.opmap[opstr]
+	CmdStats.rwlck.RUnlock()
 
 	if s != nil || !create {
 		return s
 	}
 
-	cmdstats.rwlck.Lock()
-	s = cmdstats.opmap[opstr]
+	CmdStats.rwlck.Lock()
+	s = CmdStats.opmap[opstr]
 	if s == nil {
 		s = &OpStats{opstr: opstr}
-		cmdstats.opmap[opstr] = s
+		CmdStats.opmap[opstr] = s
 	}
-	cmdstats.rwlck.Unlock()
+	CmdStats.rwlck.Unlock()
 	return s
 }
 
 // Add by WangChunyan
 func GetRedisOpStats(redisAddr string, opstr string) (*RedisOpStats, *OpStats) {
-	cmdstats.rwlck.RLock()
-	s := cmdstats.redisopmap[redisAddr]
-	cmdstats.rwlck.RUnlock()
+	CmdStats.rwlck.RLock()
+	s := CmdStats.RedisOpMap[redisAddr]
+	CmdStats.rwlck.RUnlock()
 	// find redis map
 	if s != nil {
-		cmdstats.rwlck.RLock()
+		CmdStats.rwlck.RLock()
 		rs := s.cmdmap[opstr]
-		cmdstats.rwlck.RUnlock()
+		CmdStats.rwlck.RUnlock()
 		// find op map
 		if rs != nil {
 			return s, rs
 		} else {
-			cmdstats.rwlck.Lock()
+			CmdStats.rwlck.Lock()
 			rs = &OpStats{opstr: opstr}
 			s.cmdmap[opstr] = rs
-			cmdstats.rwlck.Unlock()
+			CmdStats.rwlck.Unlock()
 			return s, rs
 		}
 	}
@@ -171,27 +171,28 @@ func GetRedisOpStats(redisAddr string, opstr string) (*RedisOpStats, *OpStats) {
 	s.cmdmap = make(map[string]*OpStats)
 	rs := &OpStats{opstr: opstr}
 	s.cmdmap[opstr] = rs
-	cmdstats.rwlck.Lock()
-	cmdstats.redisopmap[redisAddr] = s
-	cmdstats.rwlck.Unlock()
+	CmdStats.rwlck.Lock()
+	CmdStats.RedisOpMap[redisAddr] = s
+	CmdStats.rwlck.Unlock()
 	return s, rs
 }
 
 func GetAllOpStats() []*OpStats {
 	var all = make([]*OpStats, 0, 128)
-	cmdstats.rwlck.RLock()
-	for _, s := range cmdstats.opmap {
+	CmdStats.rwlck.RLock()
+	for _, s := range CmdStats.opmap {
 		all = append(all, s)
 	}
-	cmdstats.rwlck.RUnlock()
+	CmdStats.rwlck.RUnlock()
 	return all
 }
 
 func GetAllRedisOpStats() []*StateRedisOp {
 	var maxkeynum int = 0
 	var all = make([]*StateRedisOp, 0, 64)
-	cmdstats.rwlck.RLock()
-	for key, s := range cmdstats.redisopmap {
+
+	CmdStats.rwlck.RLock()
+	for key, s := range CmdStats.RedisOpMap {
 		maxkeynum++
 		var rediscmdmap = &StateRedisOp{
 			RedisAddr: key,
@@ -206,7 +207,7 @@ func GetAllRedisOpStats() []*StateRedisOp {
 		}
 		all = append(all, rediscmdmap)
 	}
-	cmdstats.rwlck.RUnlock()
+	CmdStats.rwlck.RUnlock()
 	return all
 }
 
@@ -214,7 +215,7 @@ func incrOpStats(opstr string, usecs int64) {
 	s := GetOpStats(opstr, true)
 	s.calls.Incr()
 	s.usecs.Add(usecs)
-	cmdstats.requests.Incr()
+	CmdStats.requests.Incr()
 }
 
 func incrRedisOpStats(redisAddr string, opstr string, usecs int64) {
@@ -233,11 +234,11 @@ func incrRedisFailOpStats(redisAddr string, opstr string, usecs int64) {
 
 // Add by WangChunyan
 func incrAllRequests() {
-	cmdstats.allRequests.Incr()
+	CmdStats.allRequests.Incr()
 }
 
 func incrFailRequests() {
-	cmdstats.failRequests.Incr()
+	CmdStats.failRequests.Incr()
 }
 
 func incrFailOpStats(opstr string, usecs int64) {
@@ -247,13 +248,13 @@ func incrFailOpStats(opstr string, usecs int64) {
 }
 
 func incrTimeoutOpStats() {
-	cmdstats.timeoutRequests.Incr()
+	CmdStats.timeoutRequests.Incr()
 }
 
 func incrConnReqs() {
-	cmdstats.connReqs.Incr()
+	CmdStats.connReqs.Incr()
 }
 
 func incrFailConnReqs() {
-	cmdstats.failConnReqs.Incr()
+	CmdStats.failConnReqs.Incr()
 }

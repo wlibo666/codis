@@ -124,9 +124,36 @@ func handleMoniData(w http.ResponseWriter, r *http.Request) {
 	m["op_fail_num"] = router.FailReqs()
 	m["op_succ_num"] = router.OpCounts()
 	m["cmd_proxy"] = router.GetAllOpStats()
+	proxy.CleanInvalidRedis()
 	m["cmd_redis"] = router.GetAllRedisOpStats()
 	b, _ := json.Marshal(m)
 	str := fmt.Sprintf("{ \"router\": %s}", string(b))
+	fmt.Fprintf(w, str)
+}
+
+/*
+func printSlotsInfo() {
+	sinfo := proxy.GetProxySlots()
+
+	var slen int = len(sinfo)
+	log.Infof("i slot len :%d", slen)
+
+	for i := 0; i < slen; i++ {
+		si := sinfo[i]
+		if si != nil {
+			log.Infof("id:%d,master:%s,ismgrt:%d,mgrtfrom:%s", si.ID, si.Master, si.IsMgrt, si.MgrtFrom)
+		} else {
+			log.Info("si[%d] is nil", i)
+		}
+	}
+}
+*/
+func handleSlotsInfo(w http.ResponseWriter, r *http.Request) {
+	//printSlotsInfo()
+	var m = make(map[string]interface{})
+	m["sinfo"] = proxy.GetProxySlots()
+	b, _ := json.Marshal(m)
+	str := fmt.Sprintf("{\"slots\": %s}", string(b))
 	fmt.Fprintf(w, str)
 }
 
@@ -207,6 +234,7 @@ func main() {
 	http.HandleFunc("/setloglevel", handleSetLogLevel)
 	http.HandleFunc("/debug/vars", handleDebugVars)
 	http.HandleFunc("/MoniData", handleMoniData)
+	http.HandleFunc("/slotsinfo", handleSlotsInfo)
 	go func() {
 		err := http.ListenAndServe(httpAddr, nil)
 		log.PanicError(err, "http debug server quit")
@@ -222,6 +250,7 @@ func main() {
 
 	s := proxy.New(addr, httpAddr, conf)
 	defer s.Close()
+	proxy.StoreGlobalProxy(s)
 	/*
 		stats.PublishJSONFunc("router", func() string {
 			var m = make(map[string]interface{})

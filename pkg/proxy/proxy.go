@@ -32,12 +32,61 @@ type Server struct {
 	lastActionSeq int
 
 	evtbus   chan interface{}
-	router   *router.Router
+	GRouter  *router.Router
 	listener net.Listener
 
 	kill chan interface{}
 	wait sync.WaitGroup
 	stop sync.Once
+}
+
+var GlobalProxy *Server
+
+func StoreGlobalProxy(s *Server) {
+	GlobalProxy = s
+}
+
+func CleanInvalidRedis() {
+	for key, _ := range router.CmdStats.RedisOpMap {
+		//if key is not master redis,delete it
+		if GlobalProxy.GRouter.Pool[key] == nil {
+			log.Warnf("redis [%s] is not master,delete its StatInfo", key)
+			delete(router.CmdStats.RedisOpMap, key)
+		}
+	}
+}
+
+// 获取代理的slot状态
+// 用于向监控程序提供slot信息，若与zk上不一致时报警
+// 原因是网络不好时proxy可能收不到zk的通知
+type MoniSlot struct {
+	ID       int    `json:"slotid"`
+	Master   string `json:"master"`
+	IsMgrt   int    `json:"ismgrt"`
+	MgrtFrom string `json:"mgrtfrom"`
+}
+
+func GetProxySlots() []*MoniSlot {
+	slots := make([]*MoniSlot, 0, router.MaxSlotNum)
+
+	for _, s := range GlobalProxy.GRouter.GSlots {
+		var tmpIsMgrt int = 0
+		var tmpMgrtFrom string = ""
+		if s.Migrate.From == "" {
+			tmpIsMgrt = 0
+		} else {
+			tmpIsMgrt = 1
+			tmpMgrtFrom = s.Migrate.From
+		}
+		tmps := &MoniSlot{
+			ID:       s.Id,
+			Master:   s.Backend.Addr,
+			IsMgrt:   tmpIsMgrt,
+			MgrtFrom: tmpMgrtFrom,
+		}
+		slots = append(slots, tmps)
+	}
+	return slots
 }
 
 // changed WangChunyan
@@ -79,7 +128,7 @@ func New(addr string, debugVarAddr string, conf *Config) *Server {
 	} else {
 		s.listener = l
 	}
-	s.router = router.NewWithAuth(conf.passwd)
+	s.GRouter = router.NewWithAuth(conf.passwd)
 	s.evtbus = make(chan interface{}, 1024)
 
 	s.register()
@@ -137,8 +186,8 @@ func (s *Server) handleConns() {
 
 	go func() {
 		for c := range ch {
-			x := router.NewSessionSize(s.router, c, s.conf.passwd, s.conf.maxBufSize, s.conf.maxTimeout)
-			go x.Serve(s.router, s.conf.maxPipeline)
+			x := router.NewSessionSize(s.GRouter, c, s.conf.passwd, s.conf.maxBufSize, s.conf.maxTimeout)
+			go x.Serve(s.GRouter, s.conf.maxPipeline)
 		}
 	}()
 	var acceptFailTimes int64 = 0
@@ -176,8 +225,8 @@ func (s *Server) Close() error {
 func (s *Server) close() {
 	s.stop.Do(func() {
 		s.listener.Close()
-		if s.router != nil {
-			s.router.Close()
+		if s.GRouter != nil {
+			s.GRouter.Close()
 		}
 		close(s.kill)
 	})
@@ -299,7 +348,7 @@ func groupMaster(groupInfo models.ServerGroup) string {
 }
 
 func (s *Server) resetSlot(i int) {
-	s.router.ResetSlot(i)
+	s.GRouter.ResetSlot(i)
 }
 
 func (s *Server) fillSlot(i int) {
@@ -328,7 +377,7 @@ func (s *Server) fillSlot(i int) {
 	}
 
 	s.groups[i] = slotInfo.GroupId
-	s.router.FillSlot(i, addr, from,
+	s.GRouter.FillSlot(i, addr, from,
 		slotInfo.State.Status == models.SLOT_STATUS_PRE_MIGRATE)
 }
 
@@ -515,7 +564,7 @@ func (s *Server) loopEvents() {
 		case <-ticker.C:
 			if maxTick := s.conf.pingPeriod; maxTick != 0 {
 				if tick++; tick >= maxTick {
-					s.router.KeepAlive()
+					s.GRouter.KeepAlive()
 					tick = 0
 				}
 			}

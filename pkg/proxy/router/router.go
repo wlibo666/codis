@@ -18,9 +18,9 @@ type Router struct {
 	mu sync.Mutex
 
 	auth string
-	pool map[string]*SharedBackendConn
+	Pool map[string]*SharedBackendConn
 
-	slots [MaxSlotNum]*Slot
+	GSlots [MaxSlotNum]*Slot
 
 	closed bool
 }
@@ -32,10 +32,10 @@ func New() *Router {
 func NewWithAuth(auth string) *Router {
 	s := &Router{
 		auth: auth,
-		pool: make(map[string]*SharedBackendConn),
+		Pool: make(map[string]*SharedBackendConn),
 	}
-	for i := 0; i < len(s.slots); i++ {
-		s.slots[i] = &Slot{id: i}
+	for i := 0; i < len(s.GSlots); i++ {
+		s.GSlots[i] = &Slot{Id: i}
 	}
 	return s
 }
@@ -46,7 +46,7 @@ func (s *Router) Close() error {
 	if s.closed {
 		return nil
 	}
-	for i := 0; i < len(s.slots); i++ {
+	for i := 0; i < len(s.GSlots); i++ {
 		s.resetSlot(i)
 	}
 	s.closed = true
@@ -65,13 +65,13 @@ func (s *Router) ResetSlot(i int) error {
 	return nil
 }
 
-func (s *Router) FillSlot(i int, addr, from string, lock bool) error {
+func (s *Router) FillSlot(i int, Addr, From string, lock bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed {
 		return errClosedRouter
 	}
-	s.fillSlot(i, addr, from, lock)
+	s.fillSlot(i, Addr, From, lock)
 	return nil
 }
 
@@ -81,7 +81,7 @@ func (s *Router) KeepAlive() error {
 	if s.closed {
 		return errClosedRouter
 	}
-	for _, bc := range s.pool {
+	for _, bc := range s.Pool {
 		bc.KeepAlive()
 	}
 	return nil
@@ -89,94 +89,94 @@ func (s *Router) KeepAlive() error {
 
 func (s *Router) Dispatch(r *Request) error {
 	hkey := getHashKey(r.Resp, r.OpStr)
-	slot := s.slots[hashSlot(hkey)]
+	slot := s.GSlots[hashSlot(hkey)]
 	return slot.forward(r, hkey)
 }
 
 // Add by WangChunya
 func (s *Router) GetRedisAddrByRequest(r *Request) string {
 	hkey := getHashKey(r.Resp, r.OpStr)
-	slot := s.slots[hashSlot(hkey)]
-	return slot.backend.addr
+	slot := s.GSlots[hashSlot(hkey)]
+	return slot.Backend.Addr
 }
 
 func (s *Router) GetRedisAddrByRespOP(resp *redis.Resp, opstr string) string {
 	hkey := getHashKey(resp, opstr)
-	slot := s.slots[hashSlot(hkey)]
-	return slot.backend.addr
+	slot := s.GSlots[hashSlot(hkey)]
+	return slot.Backend.Addr
 }
 
-func (s *Router) getBackendConn(addr string) *SharedBackendConn {
-	bc := s.pool[addr]
+func (s *Router) getBackendConn(Addr string) *SharedBackendConn {
+	bc := s.Pool[Addr]
 	if bc != nil {
 		bc.IncrRefcnt()
 	} else {
-		bc = NewSharedBackendConn(addr, s.auth)
-		s.pool[addr] = bc
+		bc = NewSharedBackendConn(Addr, s.auth)
+		s.Pool[Addr] = bc
 	}
 	return bc
 }
 
 func (s *Router) putBackendConn(bc *SharedBackendConn) {
 	if bc != nil && bc.Close() {
-		delete(s.pool, bc.Addr())
+		delete(s.Pool, bc.Addr())
 	}
 }
 
 func (s *Router) isValidSlot(i int) bool {
-	return i >= 0 && i < len(s.slots)
+	return i >= 0 && i < len(s.GSlots)
 }
 
 func (s *Router) resetSlot(i int) {
 	if !s.isValidSlot(i) {
 		return
 	}
-	slot := s.slots[i]
+	slot := s.GSlots[i]
 	slot.blockAndWait()
 
-	s.putBackendConn(slot.backend.bc)
-	s.putBackendConn(slot.migrate.bc)
+	s.putBackendConn(slot.Backend.bc)
+	s.putBackendConn(slot.Migrate.bc)
 	slot.reset()
 
 	slot.unblock()
 }
 
-func (s *Router) fillSlot(i int, addr, from string, lock bool) {
+func (s *Router) fillSlot(i int, Addr, From string, lock bool) {
 	if !s.isValidSlot(i) {
 		return
 	}
-	slot := s.slots[i]
+	slot := s.GSlots[i]
 	slot.blockAndWait()
 
-	s.putBackendConn(slot.backend.bc)
-	s.putBackendConn(slot.migrate.bc)
+	s.putBackendConn(slot.Backend.bc)
+	s.putBackendConn(slot.Migrate.bc)
 	slot.reset()
 
-	if len(addr) != 0 {
-		xx := strings.Split(addr, ":")
+	if len(Addr) != 0 {
+		xx := strings.Split(Addr, ":")
 		if len(xx) >= 1 {
-			slot.backend.host = []byte(xx[0])
+			slot.Backend.host = []byte(xx[0])
 		}
 		if len(xx) >= 2 {
-			slot.backend.port = []byte(xx[1])
+			slot.Backend.port = []byte(xx[1])
 		}
-		slot.backend.addr = addr
-		slot.backend.bc = s.getBackendConn(addr)
+		slot.Backend.Addr = Addr
+		slot.Backend.bc = s.getBackendConn(Addr)
 	}
-	if len(from) != 0 {
-		slot.migrate.from = from
-		slot.migrate.bc = s.getBackendConn(from)
+	if len(From) != 0 {
+		slot.Migrate.From = From
+		slot.Migrate.bc = s.getBackendConn(From)
 	}
 
 	if !lock {
 		slot.unblock()
 	}
 
-	if slot.migrate.bc != nil {
-		log.Infof("fill slot %04d, backend.addr = %s, migrate.from = %s",
-			i, slot.backend.addr, slot.migrate.from)
+	if slot.Migrate.bc != nil {
+		log.Infof("fill slot %04d, Backend.Addr = %s, Migrate.From = %s",
+			i, slot.Backend.Addr, slot.Migrate.From)
 	} else {
-		log.Infof("fill slot %04d, backend.addr = %s",
-			i, slot.backend.addr)
+		log.Infof("fill slot %04d, Backend.Addr = %s",
+			i, slot.Backend.Addr)
 	}
 }
