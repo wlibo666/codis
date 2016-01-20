@@ -183,7 +183,7 @@ func main() {
 	}
 
 	var maxFileFrag = 10
-	var maxFragSize int64 = bytesize.GB * 1
+	var maxFragSize int64 = bytesize.MB * 128
 	if s, ok := args["--log-filesize"].(string); ok && s != "" {
 		v, err := bytesize.Parse(s)
 		if err != nil {

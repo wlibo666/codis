@@ -148,6 +148,9 @@ func GetOpStats(opstr string, create bool) *OpStats {
 
 // Add by WangChunyan
 func GetRedisOpStats(redisAddr string, opstr string) (*RedisOpStats, *OpStats) {
+	if len(redisAddr) == 0 {
+		return nil, nil
+	}
 	CmdStats.rwlck.RLock()
 	s := CmdStats.RedisOpMap[redisAddr]
 	CmdStats.rwlck.RUnlock()
@@ -193,6 +196,9 @@ func GetAllRedisOpStats() []*StateRedisOp {
 
 	CmdStats.rwlck.RLock()
 	for key, s := range CmdStats.RedisOpMap {
+		if len(key) == 0 {
+			continue
+		}
 		maxkeynum++
 		var rediscmdmap = &StateRedisOp{
 			RedisAddr: key,
@@ -220,6 +226,9 @@ func incrOpStats(opstr string, usecs int64) {
 
 func incrRedisOpStats(redisAddr string, opstr string, usecs int64) {
 	rs, s := GetRedisOpStats(redisAddr, opstr)
+	if rs == nil || s == nil {
+		return
+	}
 	s.calls.Incr()
 	s.usecs.Add(usecs)
 	rs.calls.Incr()
@@ -227,6 +236,9 @@ func incrRedisOpStats(redisAddr string, opstr string, usecs int64) {
 
 func incrRedisFailOpStats(redisAddr string, opstr string, usecs int64) {
 	rs, s := GetRedisOpStats(redisAddr, opstr)
+	if rs == nil || s == nil {
+		return
+	}
 	s.failCalls.Incr()
 	s.failUsecs.Add(usecs)
 	rs.failcalls.Incr()
