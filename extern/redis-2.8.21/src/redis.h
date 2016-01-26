@@ -47,6 +47,7 @@
 #include <netinet/in.h>
 #include <lua.h>
 #include <signal.h>
+#include <sys/types.h>
 
 typedef long long mstime_t; /* millisecond time type. */
 
@@ -1471,4 +1472,6 @@ void redisLogHexDump(int level, char *descr, void *value, size_t len);
 #define redisDebugMark() \
     printf("-- MARK %s:%d --\n", __FILE__, __LINE__)
 
+/* add by WangChunyan,check memory before fork  */
+int check_fork_flag();
 #endif

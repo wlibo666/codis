@@ -768,7 +768,8 @@ int rdbSaveBackground(char *filename) {
 
     server.dirty_before_bgsave = server.dirty;
     server.lastbgsave_try = time(NULL);
-
+    if (check_fork_flag() != 0)
+	    return REDIS_ERR;
     start = ustime();
     if ((childpid = fork()) == 0) {
         int retval;
@@ -1430,6 +1431,14 @@ int rdbSaveToSlavesSockets(void) {
     }
 
     /* Create the child process. */
+    if (check_fork_flag() != 0)
+    {
+	    zfree(clientids);
+	    zfree(fds);
+	    close(pipefds[0]);
+	    close(pipefds[1]);
+	    return REDIS_ERR;
+    }
     start = ustime();
     if ((childpid = fork()) == 0) {
         /* Child */

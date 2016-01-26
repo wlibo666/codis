@@ -3324,6 +3324,78 @@ void redisSetProcTitle(char *title) {
 #endif
 }
 
+/* add by WangChunyan */
+#define MAX_CMD_RES_LEN         256
+#define CMD_GET_USABLE_MEM      "/usr/bin/free -m"
+static int get_usable_mem()
+{
+	FILE *fp = NULL;
+	char res[MAX_CMD_RES_LEN] = {0};
+	int usable = 0;
+
+	fp = popen(CMD_GET_USABLE_MEM, "r");
+	if (fp == NULL)
+	{
+		return -1;
+	}
+	while(fgets(res, MAX_CMD_RES_LEN-1, fp) != NULL)
+	{
+		if (strstr(res, "cache:") != NULL)
+		{
+			if (sscanf(res, "%*s %*s %*s %d", &usable) == 1)
+			{
+				break;
+			}
+		}
+	}
+	pclose(fp);
+	return usable;
+}
+
+static int get_self_used_mem()
+{
+	FILE *fp = NULL;
+	char filename[256] = {0};
+	char linedata[256] = {0};
+	long used_mem = 0;
+	pid_t pidself;
+
+	pidself = getpid();
+	snprintf(filename, 255, "/proc/%d/status", pidself);
+	fp = fopen(filename, "r");
+	if (fp == NULL)
+	{
+		return -1;
+	}
+	while(fgets(linedata, 255, fp) != NULL)
+	{
+		if (strstr(linedata, "VmRSS") != NULL)
+		{
+			sscanf(linedata, "%*s %ld %*s", &used_mem);
+			break;
+		}
+	}
+	fclose(fp);
+	return (used_mem/1024);
+}
+
+int check_fork_flag()
+{
+	int usable_mem = get_usable_mem();
+	int used_mem = get_self_used_mem();
+	
+	if (usable_mem <= 0 || used_mem <= 0 || usable_mem < (used_mem + 200))
+	{
+		redisLog(REDIS_NOTICE, "usable memory [%d]M,server data[%d]M,is not enough, can not fork child progress now.", usable_mem, used_mem);
+		return -1;
+	}
+	else
+	{
+		redisLog(REDIS_NOTICE, "usable memory [%d]M,server data[%d]M,is enough, can fork child progress now.", usable_mem, used_mem);	
+	}
+	return 0;
+}
+
 int main(int argc, char **argv) {
     struct timeval tv;
 

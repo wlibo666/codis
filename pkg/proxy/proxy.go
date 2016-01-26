@@ -278,15 +278,23 @@ func (s *Server) markOffline() {
 }
 
 func (s *Server) waitOnline() bool {
+	var trytimes int = 0
 	for {
 		// changed WangChunyan
 		info, err := s.topo.GetProxyInfo(s.info.Id)
 		if err != nil {
+			trytimes++
 			//log.PanicErrorf(err, "waitOnline:get proxy info failed: %s", s.info.Id)
 			log.Warnf("Server waitOnline() failed,err: %v", err.Error())
-			time.Sleep(3 * time.Second)
+			if trytimes >= 100 {
+				log.Errorf("Server waitOnline [%d] times,will exit.", trytimes)
+				os.Exit(0)
+			} else {
+				time.Sleep(3 * time.Second)
+			}
 			continue
 		}
+		trytimes = 0
 		switch info.State {
 		case models.PROXY_STATE_MARK_OFFLINE:
 			log.Infof("waitOnline mark offline, proxy got offline event: %s", s.info.Id)

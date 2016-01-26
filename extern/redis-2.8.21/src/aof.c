@@ -1081,6 +1081,8 @@ int rewriteAppendOnlyFileBackground(void) {
     long long start;
 
     if (server.aof_child_pid != -1) return REDIS_ERR;
+    if (check_fork_flag() != 0)
+	    return REDIS_ERR;
     start = ustime();
     if ((childpid = fork()) == 0) {
         char tmpfile[256];
