@@ -3384,14 +3384,14 @@ int check_fork_flag()
 	int usable_mem = get_usable_mem();
 	int used_mem = get_self_used_mem();
 	
-	if (usable_mem <= 0 || used_mem <= 0 || usable_mem < (used_mem + 200))
+	if (usable_mem <= 0 || used_mem <= 0 || usable_mem < used_mem)
 	{
-		redisLog(REDIS_NOTICE, "usable memory [%d]M,server data[%d]M,is not enough, can not fork child progress now.", usable_mem, used_mem);
+		redisLog(REDIS_NOTICE, "usable memory [%d] M,server data[%d] M,is not enough, can not fork child progress now.", usable_mem, used_mem);
 		return -1;
 	}
 	else
 	{
-		redisLog(REDIS_NOTICE, "usable memory [%d]M,server data[%d]M,is enough, can fork child progress now.", usable_mem, used_mem);	
+		redisLog(REDIS_NOTICE, "usable memory [%d] M,server data[%d] M,is enough, can fork child progress now.", usable_mem, used_mem);	
 	}
 	return 0;
 }
