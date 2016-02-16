@@ -20,7 +20,7 @@ build-server:
 	@mkdir -p bin
 	make -j4 -C extern/redis-2.8.21/
 	@rm -f bin/codis-server
-	@cp -f extern/redis-2.8.21/src/redis-server bin/codis-server
+	@cp -f extern/redis-2.8.21/src/redis-server bin/letv-redis
 
 clean:
 	@rm -rf bin

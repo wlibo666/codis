@@ -51,6 +51,11 @@
 #include <sys/resource.h>
 #include <sys/utsname.h>
 #include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 /* Our shared "common" objects */
 
@@ -3327,11 +3332,12 @@ void redisSetProcTitle(char *title) {
 /* add by WangChunyan */
 #define MAX_CMD_RES_LEN         256
 #define CMD_GET_USABLE_MEM      "/usr/bin/free -m"
-static int get_usable_mem()
+static int get_usable_mem(int *total)
 {
 	FILE *fp = NULL;
 	char res[MAX_CMD_RES_LEN] = {0};
 	int usable = 0;
+	int totalmem = 0;
 
 	fp = popen(CMD_GET_USABLE_MEM, "r");
 	if (fp == NULL)
@@ -3340,6 +3346,13 @@ static int get_usable_mem()
 	}
 	while(fgets(res, MAX_CMD_RES_LEN-1, fp) != NULL)
 	{
+	    if (strstr(res, "Mem:") != NULL)
+	    {
+	        if (sscanf(res, "%*s %d %*s %*s %*s %*s %*s", &totalmem) == 1)
+	        {
+	            *total = totalmem;
+	        }
+	    }
 		if (strstr(res, "cache:") != NULL)
 		{
 			if (sscanf(res, "%*s %*s %*s %d", &usable) == 1)
@@ -3379,10 +3392,254 @@ static int get_self_used_mem()
 	return (used_mem/1024);
 }
 
+typedef enum {role_parent=1, role_child=2} ROLE;
+struct proc_info {
+	char progname[32];
+	ROLE role;
+	int pid;
+	int ppid;
+	int used_mem;
+};
+
+#define MAX_INSTANSE_PER_MACHINE	32
+#define DIR_NAME			"/proc"
+
+struct proc_info procinfos[MAX_INSTANSE_PER_MACHINE];
+
+struct proc_name
+{
+	char *name;
+	ROLE role;
+}procnames[] = {
+	{ "letv-redis", role_parent },
+	{ "letv-redis-aof-rewrite", role_child },
+	{ "letv-redis-rdb-bgsave", role_child },
+	{ "letv-redis-rdb-to-slaves", role_child },
+};
+
+static int check_num(char *num)
+{
+	if (num == NULL)
+		return -1;
+	int len = strlen(num);
+	int i = 0;
+
+	for (i=0; i<len; i++)
+	{
+		if (num[i] < '0' || num[i] > '9')
+			return -1;
+	}
+	return 0;
+}
+
+static int match_name(char *procname)
+{
+	int index = 0;
+	int max = sizeof(procnames)/sizeof(struct proc_name);
+	if (procname == NULL)
+		return -1;
+	for (index=0; index<max; index++)
+	{
+		if (strncmp(procname, procnames[index].name, strlen(procnames[index].name)) == 0)
+			return index;
+	}
+	return -1;
+}
+
+static char *get_valid_data(char *data)
+{
+	char *tmppos = data;
+	if (data == NULL)
+		return NULL;
+	int len = strlen(data);
+	int index = 0;
+	for (index=0; index<len; index++)
+	{
+		if (*tmppos != ' ' && *tmppos != '\t' && *tmppos != '\n')
+			return tmppos;
+		index++;
+		tmppos++;
+	}
+	return NULL;
+}
+
+static int get_mem_info(char *dname, int index)
+{
+	char filename[64] = {0};
+	char line[256] = {0};
+	FILE *fp = NULL;
+	int procindex = 0;
+	int namelen = 0;
+	char *pos = NULL;
+	char *validdata = NULL;
+	char tmpbuf[16] = {0};
+
+	if (dname == NULL)
+		return -1;
+	if (strlen(dname) >= 10)
+		return -1;
+	if (check_num(dname) != 0)
+		return -1;
+	snprintf(filename, 64, "%s/%s/status", DIR_NAME, dname);
+	//printf("get_mem_info for[%s]\n", filename);
+	fp = fopen(filename, "r");
+	if (fp == NULL)
+		return -1;
+	while(fgets(line, 255, fp) != NULL)
+	{
+		if (strncmp(line, "Name:", 5) == 0)
+		{
+			validdata = get_valid_data(&line[5]);
+			if (validdata == NULL)
+			{
+				fclose(fp);
+				return -1;
+			}
+			procindex = match_name(validdata);
+			if (procindex == -1)
+			{
+				fclose(fp);
+				return -1;
+			}
+			namelen = (strlen(validdata)>31 ? 31: strlen(validdata)-1);
+			strncpy(procinfos[index].progname, validdata, namelen);
+			procinfos[index].role = procnames[procindex].role;
+		}
+		else if (strncmp(line, "Pid:", 4) == 0)
+		{
+			validdata = get_valid_data(&line[4]);
+			if (validdata == NULL)
+			{
+				fclose(fp);
+				return -1;
+			}
+			memset(tmpbuf, 0, 16);
+			strncpy(tmpbuf, validdata, strlen(validdata)-1);
+			procinfos[index].pid = atoi(tmpbuf);
+		}
+		else if (strncmp(line, "PPid:", 5) == 0)
+		{
+			validdata = get_valid_data(&line[5]);
+			if (validdata == NULL)
+			{
+				fclose(fp);
+				return -1;
+			}
+			memset(tmpbuf, 0, 16);
+			strncpy(tmpbuf, validdata, strlen(validdata)-1);
+			procinfos[index].ppid = atoi(tmpbuf);
+		}
+		else if (strncmp(line, "VmRSS:", 6) == 0)
+		{
+			validdata = get_valid_data(&line[6]);
+			if (validdata == NULL)
+			{
+				fclose(fp);
+				return -1;
+			}
+			pos = strchr(validdata, ' ');
+			if (pos != NULL)
+			{
+				memset(tmpbuf, 0, 16);
+				strncpy(tmpbuf, validdata, pos-validdata);
+				procinfos[index].used_mem = atoi(tmpbuf);
+			}
+		}
+	}
+	fclose(fp);
+	return 0;
+}
+
+static int get_proc_infos()
+{
+	struct dirent *dir_entry = NULL;
+	struct dirent *dir_res = NULL;
+	int procnum = 0;
+
+	DIR *dir = opendir(DIR_NAME);
+	if (dir == NULL)
+		return -1;
+	dir_entry = (struct dirent *)calloc(1, sizeof(struct dirent));
+	if (dir_entry == NULL)
+	{
+		closedir(dir);
+		return -1;
+	}
+	memset(&procinfos, 0, sizeof(struct proc_info) * MAX_INSTANSE_PER_MACHINE);
+	while(!readdir_r(dir, dir_entry, &dir_res) && dir_res != NULL)
+	{
+		if (dir_entry->d_type != DT_DIR)
+			continue;
+		//printf("dirname:%s\n", dir_entry->d_name);
+		if (get_mem_info(dir_entry->d_name, procnum) == 0)
+		{
+			procnum++;
+		}
+	}
+	closedir(dir);
+	free(dir_entry);
+	return 0;
+}
+
+static int find_parent_by_ppid(int ppid)
+{
+	int i = 0;
+	for (i=0; i<MAX_INSTANSE_PER_MACHINE; i++)
+	{
+		if (procinfos[i].pid == ppid)
+			return i;
+	}
+	return -1;
+}
+
+static int calc_used_mem()
+{
+	int all_used = 0;
+	int i = 0;
+	int pindex = 0;
+	for (i=0; i<MAX_INSTANSE_PER_MACHINE; i++)
+	{
+		if (procinfos[i].progname[0] == '\0')
+			continue;
+		if (procinfos[i].role == role_child)
+		{
+			pindex = find_parent_by_ppid(procinfos[i].ppid);
+			if (pindex != -1)
+			{
+				procinfos[i].used_mem = procinfos[pindex].used_mem;
+			}
+		}
+	}
+	for (i=0; i<MAX_INSTANSE_PER_MACHINE; i++)
+	{
+		if (procinfos[i].progname[0] == '\0')
+			continue;
+		all_used += procinfos[i].used_mem;
+	}
+	return all_used;
+}
+
 int check_fork_flag()
 {
-	int usable_mem = get_usable_mem();
+    int total_mem = 0;
+	int usable_mem = get_usable_mem(&total_mem);
 	int used_mem = get_self_used_mem();
+	int redis_used = 0;
+	if (get_proc_infos() != 0)
+	{
+	    redisLog(REDIS_NOTICE, "get all redis instance memory failed,not fork now");
+	    return -1;
+	}
+	redis_used = (calc_used_mem()/1024);
+	if ((total_mem - redis_used) < used_mem)
+	{
+	    redisLog(REDIS_NOTICE, "total memory [%d] M, redis memory [%d] M, parent memory [%d] M, is not enough.", total_mem, redis_used, used_mem);
+	    return -1;
+	}
+	else
+	{
+	    redisLog(REDIS_NOTICE, "total memory [%d] M, redis memory [%d] M, parent memory [%d] M, is enough.", total_mem, redis_used, used_mem);
+	}
 	
 	if (usable_mem <= 0 || used_mem <= 0 || usable_mem < used_mem)
 	{
@@ -3478,7 +3735,8 @@ int main(int argc, char **argv) {
     if (server.daemonize) daemonize();
     initServer();
     if (server.daemonize) createPidFile();
-    redisSetProcTitle(argv[0]);
+    //redisSetProcTitle(argv[0]);
+    redisSetProcTitle("letv-codis-server");
     redisAsciiArt();
 
     if (!server.sentinel_mode) {
