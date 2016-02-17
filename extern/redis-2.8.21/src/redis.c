@@ -56,7 +56,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
-
+#include <sys/prctl.h>
 /* Our shared "common" objects */
 
 struct sharedObjectsStruct shared;
@@ -3412,9 +3412,9 @@ struct proc_name
 	ROLE role;
 }procnames[] = {
 	{ "letv-redis", role_parent },
-	{ "letv-redis-aof-rewrite", role_child },
-	{ "letv-redis-rdb-bgsave", role_child },
-	{ "letv-redis-rdb-to-slaves", role_child },
+	{ "letv-aof-rewrit", role_child },
+	{ "letv-rdb-bgsave", role_child },
+	{ "letv-rdb-slaves", role_child },
 };
 
 static int check_num(char *num)
@@ -3736,7 +3736,8 @@ int main(int argc, char **argv) {
     initServer();
     if (server.daemonize) createPidFile();
     //redisSetProcTitle(argv[0]);
-    redisSetProcTitle("letv-codis-server");
+    redisSetProcTitle("letv-redis");
+    prctl(PR_SET_NAME, "letv-redis", NULL, NULL, NULL);
     redisAsciiArt();
 
     if (!server.sentinel_mode) {

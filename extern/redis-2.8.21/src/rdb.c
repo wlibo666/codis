@@ -39,6 +39,7 @@
 #include <sys/wait.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <sys/prctl.h>
 
 static int rdbWriteRaw(rio *rdb, void *p, size_t len) {
     if (rdb && rioWrite(rdb,p,len) == 0)
@@ -776,8 +777,9 @@ int rdbSaveBackground(char *filename) {
 
         /* Child */
         closeListeningSockets(0);
-        redisSetProcTitle("letv-redis-rdb-bgsave");
-        retval = rdbSave(filename);
+        redisSetProcTitle("letv-rdb-bgsave");
+        prctl(PR_SET_NAME, "letv-rdb-bgsave", NULL, NULL, NULL);
+	retval = rdbSave(filename);
         if (retval == REDIS_OK) {
             size_t private_dirty = zmalloc_get_private_dirty();
 
@@ -1449,8 +1451,8 @@ int rdbSaveToSlavesSockets(void) {
         zfree(fds);
 
         closeListeningSockets(0);
-        redisSetProcTitle("letv-redis-rdb-to-slaves");
-
+        redisSetProcTitle("letv-rdb-slaves");
+	prctl(PR_SET_NAME, "letv-rdb-slaves", NULL, NULL, NULL);
         retval = rdbSaveRioWithEOFMark(&slave_sockets,NULL);
         if (retval == REDIS_OK && rioFlush(&slave_sockets) == 0)
             retval = REDIS_ERR;

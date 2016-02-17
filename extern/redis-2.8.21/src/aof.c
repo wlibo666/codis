@@ -38,7 +38,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
-
+#include <sys/prctl.h>
 void aofUpdateCurrentSize(void);
 
 /* ----------------------------------------------------------------------------
@@ -1089,7 +1089,8 @@ int rewriteAppendOnlyFileBackground(void) {
 
         /* Child */
         closeListeningSockets(0);
-        redisSetProcTitle("letv-redis-aof-rewrite");
+        redisSetProcTitle("letv-aof-rewrit");
+	prctl(PR_SET_NAME, "letv-aof-rewrit", NULL, NULL, NULL);
         snprintf(tmpfile,256,"temp-rewriteaof-bg-%d.aof", (int) getpid());
         if (rewriteAppendOnlyFile(tmpfile) == REDIS_OK) {
             size_t private_dirty = zmalloc_get_private_dirty();
