@@ -58,6 +58,15 @@ Error
 ![report](doc/pictures/proxy_error_log.png)  
 从错误日志可以看出失败的每个操作以及失败的原因，该图原因是因为网络抖动，导致proxy与redis的连接断开一秒
 
+Proxy Connections Warning   
+![report](doc/pictures/proxy_conn_warn.png)   
+
+Proxy Operation Warning   
+![report](doc/pictures/proxy_OP_warn.png)   
+
+Codis-HA Warning   
+![report](doc/pictures/qiehuan_warn.png)   
+
 ##Authors
 
 Active authors:
