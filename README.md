@@ -21,7 +21,7 @@ Codis is a proxy based high performance Redis cluster solution written in Go. It
 ### 线上环境配套工具
 1. 报表生成及实时业务监控
     https://github.com/wlibo666/myowncode/tree/master/ProcessMoniData
-2. 检测redis联通性及相应时间，根据返回值处理，若响应时间过长需要报警
+2. 检测redis联通性及响应时间，根据返回值处理，若响应时间过长需要报警(需配合脚本)
     https://github.com/wlibo666/myowncode/tree/master/CheckRedis
 3. zookeeper上slot信息复制(机房整体迁移时需要将老的slot分布同步到新机房内，同时要同步所有数据，
     必须要保证slot分布的正确性)
@@ -42,6 +42,12 @@ Codis is a proxy based high performance Redis cluster solution written in Go. It
     https://github.com/wlibo666/myowncode/tree/master/scripts/RedisDataBackup
 10.主从同步检测(从dashboard获取所有redis实例，定时检测每组的master和slave同步情况，若停止同步，则重新全同步)
     https://github.com/wlibo666/myowncode/tree/master/scripts/SlaveSyncCheck
+
+##codis 部署安装   
+http://www.cnblogs.com/wlibo666/p/5235620.html  
+
+## 线上环境工具使用(自动部署监控等)   
+http://www.cnblogs.com/wlibo666/p/5235641.html   
 
 ## Snapshots
 Dashboard
