@@ -5,72 +5,76 @@
 
 Codis is a proxy based high performance Redis cluster solution written in Go. It is production-ready and widely used at [wandoujia.com](http://wandoujia.com) and many companies. You can see [Codis Releases](https://github.com/wandoulabs/codis/releases) for latest and most stable realeases.
 
-##Compared with Twemproxy and Redis Cluster
-<table>
-<tr><th></th><th>Codis</th><th>Twemproxy</th><th>Redis Cluster</th></tr>
-<tr><td>resharding without restarting cluster</td><td>Yes</td><td>No</td><td>Yes</td></tr>
-<tr><td>pipeline</td><td>Yes</td><td>Yes</td><td>No</td></tr>
-<tr><td>hash tags for multi-key operations</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-<tr><td>multi-key operations while resharding</td><td>Yes</td><td>-</td><td>No(<a href="http://redis.io/topics/cluster-spec#multiple-keys-operations">details</a>)</td></tr>
-<tr><td>Redis clients supporting</td><td>Any clients</td><td>Any clients</td><td>Clients have to support cluster protocol</td></tr>
-</table>
-"Resharding" means migrating the data in one slot from one redis server to another, usually happens while increasing/decreasing the number of redis servers.
+  
+### °æ±¾ËµÃ÷
+¸Ã°æ±¾codisÊÇÔÚÍã¶¹¼Ô¿ªÔ´Èí¼şcodis( https://github.com/CodisLabs/codis )µÄ»ù´¡ÉÏĞŞ¸Ä¶ø³É£¬Ö÷Òª×öÁËÒÔÏÂĞŞ¸Ä  
 
-##Other Features
-* GUI website dashboard & admin tools
-* Supports most of Redis commands, Fully compatible with Twemproxy(https://github.com/twitter/twemproxy)
-* Proxies can register on zk/etcd, clients can avoid dead proxies, see "High Availability" section.
+1. ÓÅ»¯´íÎóÈÕÖ¾Êä³ö   
+2. codis-proxyÓëzookeeperÁ¬½Ó¶Ï¿ªºó½øĞĞÖØĞÂÁ¬½Ó¶ø²»ÊÇÍË³ö  
+3. µ±slot×´Ì¬ÎªmigrateÊ±¿ÉÒÔÉèÖÃÆä×´Ì¬(±ÜÃâµ¥¸öslotÒ»Ö±Ç¨ÒÆÊ§°ÜµÄÇé¿öÏÂÎŞ·¨»Ö¸´)  
+4. »ñÈ¡OPSÊ±´«ÊäµÄ¶îÍâĞÅÏ¢Êı¾İ¹ı´ó£¬²Ã¼ôµô  
+5. ÔÚcodis-proxyÉÏÌí¼Ó¼à¿Ø´úÂë£¬ÒÔ±ã¼à¿Ø¼°Éú³ÉÈÕÖ¾(Ã¿¸öredisÃüÁîµÄ²Ù×÷´ÎÊı/
+    Ã¿¸ö´úÀíµÄ²Ù×÷´ÎÊı/Ã¿¸öredis»úÆ÷µÄ²Ù×÷´ÎÊıµÈ)    
+6. redis-serverĞŞ¸Ä£¬´óÄÚ´æ»úÆ÷ÉÏ¶àÊµÀıÌá¸ßµ¥»úÄÚ´æÀûÓÃÂÊ(ÒÔÇ°ÊÇ1/2£¬ĞŞ¸ÄºóÀíÂÛÉÏÀû
+    ÓÃÂÊ¿ÉÒÔ´ïµ½ n-1/n)
 
-## Tutorial
-
-[ç®€ä½“ä¸­æ–‡](https://github.com/wandoulabs/codis/blob/master/doc/tutorial_zh.md)
-[English](https://github.com/wandoulabs/codis/blob/master/doc/tutorial_en.md)
-
-## FAQ
-
-[ç®€ä½“ä¸­æ–‡](https://github.com/wandoulabs/codis/blob/master/doc/FAQ_zh.md)
-[English (WIP) ](https://github.com/wandoulabs/codis/blob/master/doc/FAQ_en.md)
-
-## High Availability
-
-[ç®€ä½“ä¸­æ–‡](https://github.com/wandoulabs/codis/blob/master/doc/tutorial_zh.md#ha)
-[English](https://github.com/wandoulabs/codis/blob/master/doc/tutorial_en.md#ha)
-
-## Architecture
-
-![architecture](doc/pictures/architecture.png)
+### ÏßÉÏ»·¾³ÅäÌ×¹¤¾ß
+1. ±¨±íÉú³É¼°ÊµÊ±ÒµÎñ¼à¿Ø
+    https://github.com/wlibo666/myowncode/tree/master/ProcessMoniData
+2. ¼ì²âredisÁªÍ¨ĞÔ¼°ÏàÓ¦Ê±¼ä£¬¸ù¾İ·µ»ØÖµ´¦Àí£¬ÈôÏìÓ¦Ê±¼ä¹ı³¤ĞèÒª±¨¾¯
+    https://github.com/wlibo666/myowncode/tree/master/CheckRedis
+3. zookeeperÉÏslotĞÅÏ¢¸´ÖÆ(»ú·¿ÕûÌåÇ¨ÒÆÊ±ĞèÒª½«ÀÏµÄslot·Ö²¼Í¬²½µ½ĞÂ»ú·¿ÄÚ£¬Í¬Ê±ÒªÍ¬²½ËùÓĞÊı¾İ£¬
+    ±ØĞëÒª±£Ö¤slot·Ö²¼µÄÕıÈ·ĞÔ)
+    https://github.com/wlibo666/myowncode/tree/master/CopySlotInfo
+4. É¾³ıÇ¨ÒÆÈÎÎñ¹¤¾ß(µ±Ç¨ÒÆ³ö´íÊ±¿ÉÒÔÈ¡ÏûÇ¨ÒÆÈÎÎñ)
+    https://github.com/wlibo666/myowncode/tree/master/delMigrateTasks
+5. slotÇ¨ÒÆ¼ì²â¹¤¾ß(µ¥¸ökeyÄÚ´æ¹ı´óÊ±£¬Õı³£Ç¨ÒÆ»áµ¼ÖÂ·şÎñÍ£Ö¹£¬ĞèÒª¼ì²â¸ÃslotÊÇ·ñ¿ÉÇ¨ÒÆ)
+    https://github.com/wlibo666/myowncode/blob/master/checkSlot.go
+6. ´ókeyÇ¨ÒÆ¹¤¾ß(Ôø¾­Óöµ½µ¥¸ökeyÄÚ´æ½ü3G£¬Õı³£Ç¨ÒÆÊ±»áµ¼ÖÂ·şÎñÍ£Ö¹£¬Ğèµ¥¶À´¦Àí)
+    https://github.com/wlibo666/myowncode/tree/master/MigrateBigKey
+7. codis-ha ¹Ù·½Âß¼­(https://github.com/ngaut/codis-ha)ÊÇÈ¡µÚÒ»¸öslave£¬Ò»µ©µÚÒ»¸ösalve¹Òµô£¬¼´Ê¹ÆäËûslave´æ»î¸Ã×é·şÎñÒ²»áÍ£Ö¹£»
+    ÏÖ¸ÄÎª´Ó¶à¸ösalveÖĞÈ¡µÚÒ»¸ö´æ»îµÄslave£»Ìí¼ÓÓÊ¼ş¸æ¾¯(server¹Òµô/×Ô¶¯ÇĞ»»/ÖØÓÃoffline»úÆ÷)
+    https://github.com/wlibo666/codis-ha
+8. redisÊµÀıÄÚ´æ¼ì²â½Å±¾(Í¨¹ıdashboard»ñÈ¡ËùÓĞredisÊµÀı£¬µ¥redis masterÊµÀıÄÚ´æÊ¹ÓÃ³¬¹ıÏŞ¶¨ÖµµÄ80%ºóÓÊ¼ş¸æ¾¯£¬
+    ±íÃ÷ĞèÒªÀ©Èİ)
+    https://github.com/wlibo666/myowncode/tree/master/scripts/CheckRedisMemory
+9. Êı¾İ±¸·İ½Å±¾(Í¨¹ıdashboard»ñÈ¡ËùÓĞredisÊµÀı£¬´ÓslaveÊµÀı»úÆ÷ÉÏ½«Êı¾İÍ³Ò»±¸·İµ½Ö¸¶¨·şÎñÆ÷)
+    https://github.com/wlibo666/myowncode/tree/master/scripts/RedisDataBackup
+10.Ö÷´ÓÍ¬²½¼ì²â(´Ódashboard»ñÈ¡ËùÓĞredisÊµÀı£¬¶¨Ê±¼ì²âÃ¿×éµÄmasterºÍslaveÍ¬²½Çé¿ö£¬ÈôÍ£Ö¹Í¬²½£¬ÔòÖØĞÂÈ«Í¬²½)
+    https://github.com/wlibo666/myowncode/tree/master/scripts/SlaveSyncCheck
 
 ## Snapshots
-
 Dashboard
-![main](doc/pictures/snapshot.png)
-
-Migrate
-![migrate](doc/pictures/snapshot_migrate.png)
+![main](doc/pictures/muti_redis_instance.png)
 
 Slots
-![slots](doc/pictures/slots.png)
+![slots](doc/pictures/muti_slots.png)
 
-##Benchmarks
-[See benchmark results](doc/benchmark.md)
+Report
+![report](doc/pictures/codis_report.png)  
+´Ó±¨±íÖĞ¿ÉÒÔ¿´µ½´úÀí»úÆ÷ 10.112.29.22 ´¦ÀíredisÇëÇóÊ§°Ü200´Î£¬¿ÉÒÔ¾İ´ËÈ¥¸Ã»úÆ÷ÄÚ²é¿´ÏêÏ¸ĞÅÏ¢
+
+Error
+![report](doc/pictures/proxy_error_log.png)  
+´Ó´íÎóÈÕÖ¾¿ÉÒÔ¿´³öÊ§°ÜµÄÃ¿¸ö²Ù×÷ÒÔ¼°Ê§°ÜµÄÔ­Òò£¬¸ÃÍ¼Ô­ÒòÊÇÒòÎªÍøÂç¶¶¶¯£¬µ¼ÖÂproxyÓëredisµÄÁ¬½Ó¶Ï¿ªÒ»Ãë
 
 ##Authors
 
 Active authors:
-* [@spinlock9](https://github.com/spinlock) [å¾®åš@æ–¯å®¾æ´›å…‹](http://weibo.com/spinlock9)
-* [@yangzhe1991](https://github.com/yangzhe1991) [å¾®åš@\_æ¨è‚‰\_](http://weibo.com/yangzhe1991)
+* [@spinlock9](https://github.com/spinlock) [Î¢²©@Ë¹±öÂå¿Ë](http://weibo.com/spinlock9)
+* [@yangzhe1991](https://github.com/yangzhe1991) [Î¢²©@\_ÑîÈâ\_](http://weibo.com/yangzhe1991)
 
 Emeritus authors:
-* [@goroutine](https://github.com/ngaut) [å¾®åš@goroutine](http://weibo.com/u/1923497393)
-* [@c4pt0r](https://github.com/c4pt0r) [å¾®åš@Dongxu_Huang](http://weibo.com/c4pt0r)
+* [@goroutine](https://github.com/ngaut) [Î¢²©@goroutine](http://weibo.com/u/1923497393)
+* [@c4pt0r](https://github.com/c4pt0r) [Î¢²©@Dongxu_Huang](http://weibo.com/c4pt0r)
 
 Thanks:
 * [@ivanzhaowy](https://github.com/ivanzhaowy)
-* [@Apache9](https://github.com/apache9) [å¾®åš@Apache9](http://weibo.com/u/1876829375)
+* [@Apache9](https://github.com/apache9) [Î¢²©@Apache9](http://weibo.com/u/1876829375)
 
 ## License
 
-Codis is licensed under MITï¼Œ see MIT-LICENSE.txt
+Codis is licensed under MIT£¬ see MIT-LICENSE.txt
 
 -------------
 *You are welcome to use Codis in your product, and feel free to let us know~ :)*

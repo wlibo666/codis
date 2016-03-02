@@ -769,6 +769,7 @@ int rdbSaveBackground(char *filename) {
 
     server.dirty_before_bgsave = server.dirty;
     server.lastbgsave_try = time(NULL);
+    redisLog(REDIS_NOTICE, "check memory for rdb-bgsave");
     if (check_fork_flag() != 0)
 	    return REDIS_ERR;
     start = ustime();
@@ -1433,6 +1434,7 @@ int rdbSaveToSlavesSockets(void) {
     }
 
     /* Create the child process. */
+    redisLog(REDIS_NOTICE, "check memory for rdb-to-slaves");
     if (check_fork_flag() != 0)
     {
 	    zfree(clientids);

@@ -1081,6 +1081,7 @@ int rewriteAppendOnlyFileBackground(void) {
     long long start;
 
     if (server.aof_child_pid != -1) return REDIS_ERR;
+    redisLog(REDIS_NOTICE, "check memory for aof-rewrite");
     if (check_fork_flag() != 0)
 	    return REDIS_ERR;
     start = ustime();
