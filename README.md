@@ -42,6 +42,8 @@ Codis is a proxy based high performance Redis cluster solution written in Go. It
     https://github.com/wlibo666/myowncode/tree/master/scripts/RedisDataBackup
 10.主从同步检测(从dashboard获取所有redis实例，定时检测每组的master和slave同步情况，若停止同步，则重新全同步)
     https://github.com/wlibo666/myowncode/tree/master/scripts/SlaveSyncCheck
+11. 批量安装部署脚本    
+    https://github.com/wlibo666/codis/tree/master/autoinstall   
 
 ##codis 部署安装   
 http://www.cnblogs.com/wlibo666/p/5235620.html  
