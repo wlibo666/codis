@@ -5,6 +5,7 @@
 
 Codis is a proxy based high performance Redis cluster solution written in Go. It is production-ready and widely used at [wandoujia.com](http://wandoujia.com) and many companies. You can see [Codis Releases](https://github.com/wandoulabs/codis/releases) for latest and most stable realeases.
 
+##changed base on codis 2.x
   
 ### 版本说明
 该版本codis是在豌豆荚开源软件codis( https://github.com/CodisLabs/codis )的基础上修改而成，主要做了以下修改  
