@@ -52,6 +52,30 @@ http://www.cnblogs.com/wlibo666/p/5235620.html
 ## 线上环境工具使用(自动部署监控等)   
 http://www.cnblogs.com/wlibo666/p/5235641.html   
 
+## Snapshots
+Dashboard
+![main](doc/pictures/muti_redis_instance.png)
+
+Slots
+![slots](doc/pictures/muti_slots.png)
+
+Report
+![report](doc/pictures/codis_report.png)  
+从报表中可以看到代理机器 10.112.29.22 处理redis请求失败200次，可以据此去该机器内查看详细信息
+
+Error
+![report](doc/pictures/proxy_error_log.png)  
+从错误日志可以看出失败的每个操作以及失败的原因，该图原因是因为网络抖动，导致proxy与redis的连接断开一秒
+
+Proxy Connections Warning   
+![report](doc/pictures/proxy_conn_warn.png)   
+
+Proxy Operation Warning   
+![report](doc/pictures/proxy_OP_warn.png)   
+
+Codis-HA Warning   
+![report](doc/pictures/qiehuan_warn.png)   
+
 ##Authors
 
 Active authors:
