@@ -4,10 +4,10 @@
 package router
 
 import (
-	"../../models"
-	"../../utils/errors"
-	"../../utils/log"
-	"../redis"
+	"github.com/wlibo666/codis/pkg/models"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
+	"github.com/wlibo666/codis/pkg/proxy/redis"
 	"strings"
 	"sync"
 )

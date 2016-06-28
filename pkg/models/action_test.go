@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"../utils"
-	"../utils/assert"
-	"../utils/errors"
-	"../utils/log"
 	"github.com/wandoulabs/zkhelper"
+	"github.com/wlibo666/codis/pkg/utils"
+	"github.com/wlibo666/codis/pkg/utils/assert"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
 )
 
 var (

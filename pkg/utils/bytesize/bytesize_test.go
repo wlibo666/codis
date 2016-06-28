@@ -6,9 +6,9 @@ package bytesize_test
 import (
 	"testing"
 
-	"../assert"
-	. "../bytesize"
-	"../errors"
+	"github.com/wlibo666/codis/pkg/utils/assert"
+	. "github.com/wlibo666/codis/pkg/utils/bytesize"
+	"github.com/wlibo666/codis/pkg/utils/errors"
 )
 
 func TestBytesize(t *testing.T) {

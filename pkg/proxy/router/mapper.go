@@ -8,8 +8,8 @@ import (
 	"hash/crc32"
 	"strings"
 
-	"../redis"
-	"../../utils/errors"
+	"github.com/wlibo666/codis/pkg/proxy/redis"
+	"github.com/wlibo666/codis/pkg/utils/errors"
 )
 
 var charmap [128]byte

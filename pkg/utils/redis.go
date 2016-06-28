@@ -10,7 +10,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 
-	"../utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/errors"
 )
 
 func DialToTimeout(addr string, passwd string, readTimeout, writeTimeout time.Duration) (redis.Conn, error) {

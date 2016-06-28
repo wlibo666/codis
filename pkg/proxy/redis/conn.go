@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"../../utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/errors"
 )
 
 type Conn struct {

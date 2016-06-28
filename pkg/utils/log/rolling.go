@@ -10,7 +10,7 @@ import (
 	"path"
 	"sync"
 
-	"../errors"
+	"github.com/wlibo666/codis/pkg/utils/errors"
 )
 
 type rollingFile struct {

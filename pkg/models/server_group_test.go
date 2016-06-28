@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"../utils/assert"
+	"github.com/wlibo666/codis/pkg/utils/assert"
 	"github.com/wandoulabs/zkhelper"
 )
 

@@ -4,7 +4,7 @@
 package router
 
 import (
-	"../../utils/atomic2"
+	"github.com/wlibo666/codis/pkg/utils/atomic2"
 	"encoding/json"
 	"sync"
 )

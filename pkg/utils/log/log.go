@@ -12,8 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"../errors"
-	"../trace"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/trace"
 )
 
 const (

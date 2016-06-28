@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"../redis"
-	"../../utils/errors"
-	"../../utils/log"
+	"github.com/wlibo666/codis/pkg/proxy/redis"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
 )
 
 type BackendConn struct {

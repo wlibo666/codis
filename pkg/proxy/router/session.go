@@ -4,10 +4,10 @@
 package router
 
 import (
-	"../../utils/atomic2"
-	"../../utils/errors"
-	"../../utils/log"
-	"../redis"
+	"github.com/wlibo666/codis/pkg/utils/atomic2"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
+	"github.com/wlibo666/codis/pkg/proxy/redis"
 	"encoding/json"
 	"fmt"
 	"net"

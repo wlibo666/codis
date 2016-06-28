@@ -12,9 +12,9 @@ import (
 
 	topo "github.com/wandoulabs/go-zookeeper/zk"
 
-	"../models"
-	"../utils/errors"
-	"../utils/log"
+	"github.com/wlibo666/codis/pkg/models"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
 	"github.com/wandoulabs/zkhelper"
 )
 

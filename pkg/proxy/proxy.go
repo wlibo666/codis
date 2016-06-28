@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"../models"
-	"../proxy/router"
-	"../utils/log"
+	"github.com/wlibo666/codis/pkg/models"
+	"github.com/wlibo666/codis/pkg/proxy/router"
+	"github.com/wlibo666/codis/pkg/utils/log"
 	"github.com/wandoulabs/go-zookeeper/zk"
 	topo "github.com/wandoulabs/go-zookeeper/zk"
 )
