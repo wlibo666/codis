@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wandoulabs/go-zookeeper/zk"
+	topo "github.com/wandoulabs/go-zookeeper/zk"
 	"github.com/wlibo666/codis/pkg/models"
 	"github.com/wlibo666/codis/pkg/proxy/router"
 	"github.com/wlibo666/codis/pkg/utils/log"
-	"github.com/wandoulabs/go-zookeeper/zk"
-	topo "github.com/wandoulabs/go-zookeeper/zk"
 )
 
 type Server struct {
@@ -286,11 +286,11 @@ func (s *Server) waitOnline() bool {
 			trytimes++
 			//log.PanicErrorf(err, "waitOnline:get proxy info failed: %s", s.info.Id)
 			log.Warnf("Server waitOnline() failed,err: %v", err.Error())
-			if trytimes >= 100 {
+			if trytimes >= 120 {
 				log.Errorf("Server waitOnline [%d] times,will exit.", trytimes)
 				os.Exit(0)
 			} else {
-				time.Sleep(3 * time.Second)
+				time.Sleep(1 * time.Second)
 			}
 			continue
 		}
