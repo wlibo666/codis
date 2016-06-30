@@ -16,9 +16,9 @@ import (
 	"github.com/c4pt0r/cfg"
 	"github.com/docopt/docopt-go"
 
+	"github.com/wlibo666/codis/pkg/utils"
 	"github.com/wlibo666/codis/pkg/utils/errors"
 	"github.com/wlibo666/codis/pkg/utils/log"
-	"github.com/wlibo666/codis/pkg/utils"
 )
 
 // global objects
@@ -113,7 +113,7 @@ func main() {
 
 	// set output log file
 	if s, ok := args["-L"].(string); ok && s != "" {
-		f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+		f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			log.PanicErrorf(err, "open log file failed: %s", s)
 		} else {

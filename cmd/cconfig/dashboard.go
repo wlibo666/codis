@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -25,6 +26,11 @@ import (
 	"github.com/wlibo666/codis/pkg/utils/errors"
 	"github.com/wlibo666/codis/pkg/utils/log"
 )
+
+type DashboardInfo struct {
+	Addr string `json:"addr"`
+	Pid  int    `json:"pid"`
+}
 
 func cmdDashboard(argv []string) (err error) {
 	usage := `usage: codis-config dashboard [--addr=<address>] [--http-log=<log_file>]
@@ -125,7 +131,7 @@ func pageSlots(r render.Render) {
 }
 
 func createDashboardNode() error {
-
+	var dashboard DashboardInfo
 	// make sure root dir is exists
 	rootDir := fmt.Sprintf("/zk/codis/db_%s", globalEnv.ProductName())
 	zkhelper.CreateRecursive(safeZkConn, rootDir, "", 0, zkhelper.DefaultDirACLs())
@@ -134,13 +140,27 @@ func createDashboardNode() error {
 	// make sure we're the only one dashboard
 	if exists, _, _ := safeZkConn.Exists(zkPath); exists {
 		data, _, _ := safeZkConn.Get(zkPath)
-		return errors.New("dashboard already exists: " + string(data))
+		json.Unmarshal(data, &dashboard)
+		if dashboard.Addr == globalEnv.DashboardAddr() {
+			log.Infof("dashboard exist,but addr [%s] is myown,reAdd it", dashboard.Addr)
+			safeZkConn.Delete(zkPath, 0)
+		} else {
+			conn, err := net.DialTimeout("tcp", dashboard.Addr, 3*time.Second)
+			if err != nil {
+				log.Infof("dashboard exist,but addr [%s] maybe not work,reAdd it", dashboard.Addr)
+				safeZkConn.Delete(zkPath, 0)
+			} else {
+				conn.Close()
+				return errors.New("dashboard already exists and alive: " + string(data))
+			}
+		}
 	}
-
-	content := fmt.Sprintf(`{"addr": "%v", "pid": %v}`, globalEnv.DashboardAddr(), os.Getpid())
-	pathCreated, err := safeZkConn.Create(zkPath, []byte(content), 0, zkhelper.DefaultFileACLs())
+	dashboard.Addr = globalEnv.DashboardAddr()
+	dashboard.Pid = os.Getpid()
+	info, _ := json.Marshal(&dashboard)
+	pathCreated, err := safeZkConn.Create(zkPath, info, 0, zkhelper.DefaultFileACLs())
 	createdDashboardNode = true
-	log.Infof("dashboard node created: %v, %s", pathCreated, string(content))
+	log.Infof("dashboard node created: %v, %s", pathCreated, string(info))
 	log.Warn("********** Attention **********")
 	log.Warn("You should use `kill {pid}` rather than `kill -9 {pid}` to stop me,")
 	log.Warn("or the node resisted on zk will not be cleaned when I'm quiting and you must remove it manually")
@@ -157,7 +177,7 @@ func releaseDashboardNode() {
 }
 
 func runDashboard(addr string, httpLogFile string) {
-	log.Infof("dashboard listening on addr: %s", addr)
+	log.Infof("dashboard start,will listen on addr: %s ...", addr)
 	m := martini.Classic()
 	f, err := os.OpenFile(httpLogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
