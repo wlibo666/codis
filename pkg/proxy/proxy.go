@@ -286,7 +286,7 @@ func (s *Server) waitOnline() bool {
 			trytimes++
 			//log.PanicErrorf(err, "waitOnline:get proxy info failed: %s", s.info.Id)
 			log.Warnf("Server waitOnline() failed,err: %v", err.Error())
-			if trytimes >= 120 {
+			if trytimes >= 60 {
 				log.Errorf("Server waitOnline [%d] times,will exit.", trytimes)
 				os.Exit(0)
 			} else {

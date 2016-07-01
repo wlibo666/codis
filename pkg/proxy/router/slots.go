@@ -4,11 +4,12 @@
 package router
 
 import (
-	"github.com/wlibo666/codis/pkg/utils/errors"
-	"github.com/wlibo666/codis/pkg/utils/log"
-	"github.com/wlibo666/codis/pkg/proxy/redis"
 	"fmt"
 	"sync"
+
+	"github.com/wlibo666/codis/pkg/proxy/redis"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
 )
 
 type Slot struct {
@@ -69,7 +70,7 @@ func (s *Slot) forward(r *Request, key []byte) error {
 	}
 }
 
-var ErrSlotIsNotReady = errors.New("slot is not ready, may be offline")
+var ErrSlotIsNotReady = errors.New("slot is not ready, can not connect redis")
 
 func (s *Slot) prepare(r *Request, key []byte) (*SharedBackendConn, error) {
 	if s.Backend.bc == nil {

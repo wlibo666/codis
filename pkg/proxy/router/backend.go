@@ -5,12 +5,19 @@ package router
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
+	REDIS "github.com/garyburd/redigo/redis"
 	"github.com/wlibo666/codis/pkg/proxy/redis"
 	"github.com/wlibo666/codis/pkg/utils/errors"
 	"github.com/wlibo666/codis/pkg/utils/log"
+)
+
+const (
+	MASTER_FLAG = "109 97 115 116 101 114" //ASCII master
 )
 
 type BackendConn struct {
@@ -28,6 +35,25 @@ func NewBackendConn(addr, auth string) *BackendConn {
 	}
 	go bc.Run()
 	return bc
+}
+
+func (bc *BackendConn) CheckRole() {
+	conn, err := REDIS.DialTimeout("tcp", bc.addr, 3*time.Second, 3*time.Second, 3*time.Second)
+	if err != nil {
+		log.Infof("dial redis [%s] failed,err:%s", bc.addr, err.Error())
+		return
+	}
+	defer conn.Close()
+	resp, err := conn.Do("ROLE")
+	if err != nil {
+		log.Infof("get role from redis [%s] failed,err:%s", bc.addr, err.Error())
+		return
+	}
+	role := fmt.Sprintf("%v", resp)
+	if !strings.Contains(role, MASTER_FLAG) {
+		log.Warnf("redis [%s] is not master, exit...", bc.addr)
+		os.Exit(-1)
+	}
 }
 
 func (bc *BackendConn) Run() {
@@ -144,6 +170,7 @@ func (bc *BackendConn) newBackendReader() (*redis.Conn, chan<- *Request, error) 
 			}
 		}
 	}()
+
 	return c, tasks, nil
 }
 

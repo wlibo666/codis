@@ -4,12 +4,13 @@
 package router
 
 import (
-	"github.com/wlibo666/codis/pkg/models"
-	"github.com/wlibo666/codis/pkg/utils/errors"
-	"github.com/wlibo666/codis/pkg/utils/log"
-	"github.com/wlibo666/codis/pkg/proxy/redis"
 	"strings"
 	"sync"
+
+	"github.com/wlibo666/codis/pkg/models"
+	"github.com/wlibo666/codis/pkg/proxy/redis"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
 )
 
 const MaxSlotNum = models.DEFAULT_SLOT_NUM
@@ -83,6 +84,7 @@ func (s *Router) KeepAlive() error {
 	}
 	for _, bc := range s.Pool {
 		bc.KeepAlive()
+		bc.CheckRole()
 	}
 	return nil
 }
