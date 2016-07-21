@@ -71,7 +71,6 @@ func setLogLevel(level string) {
 		lv = log.LEVEL_INFO
 	}
 	log.SetLevel(lv)
-	log.Infof("set log level to %s", lv)
 }
 
 func runCommand(cmd string, args []string) (err error) {

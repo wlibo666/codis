@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/wlibo666/codis/pkg/utils/errors"
-	"github.com/wlibo666/codis/pkg/utils/log"
 	"github.com/wandoulabs/go-zookeeper/zk"
 	"github.com/wandoulabs/zkhelper"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
 )
 
 const (

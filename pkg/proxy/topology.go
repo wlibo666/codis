@@ -8,14 +8,15 @@ import (
 	"path"
 	"strings"
 	//"sync"
+	"os"
 	"time"
 
 	topo "github.com/wandoulabs/go-zookeeper/zk"
 
+	"github.com/wandoulabs/zkhelper"
 	"github.com/wlibo666/codis/pkg/models"
 	"github.com/wlibo666/codis/pkg/utils/errors"
 	"github.com/wlibo666/codis/pkg/utils/log"
-	"github.com/wandoulabs/zkhelper"
 )
 
 type TopoUpdate interface {
@@ -70,7 +71,28 @@ func NewTopo(ProductName string, zkAddr string, f ZkFactory, provider string, zk
 		}
 	}
 	t.InitZkConn()
+	go t.checkZkConn()
 	return t
+}
+
+func (top *Topology) checkZkConn() {
+	for {
+		pendPorxy, _, err := top.zkConn.Children(models.GetSuspendProxyPath(top.ProductName))
+		if err != nil {
+			log.Warnf("get suspend proxy failed,now InitZkConn again, err:%s", err.Error())
+			top.InitZkConn()
+			time.Sleep(time.Second * 5)
+			continue
+		}
+		for _, p := range pendPorxy {
+			if p == top.proxyServer.conf.proxyId {
+				top.zkConn.Delete(models.GetSuspendProxyPath(top.ProductName)+"/"+p, 0)
+				log.Errorf("proxy:[%s] is can not recv event,should exit...", p)
+				os.Exit(0)
+			}
+		}
+		time.Sleep(time.Second * 5)
+	}
 }
 
 func (top *Topology) InitZkConn() {

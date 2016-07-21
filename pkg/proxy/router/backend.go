@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	MASTER_FLAG = "109 97 115 116 101 114" //ASCII master
+	MASTER_FLAG = "master" //ASCII master
 )
 
 type BackendConn struct {
@@ -49,9 +49,9 @@ func (bc *BackendConn) CheckRole() {
 		log.Infof("get role from redis [%s] failed,err:%s", bc.addr, err.Error())
 		return
 	}
-	role := fmt.Sprintf("%v", resp)
+	role := fmt.Sprintf("%q", resp)
 	if !strings.Contains(role, MASTER_FLAG) {
-		log.Warnf("redis [%s] is not master, exit...", bc.addr)
+		log.Warnf("redis [%s] is not master,role:[%s] exit...", bc.addr, role)
 		os.Exit(-1)
 	}
 }

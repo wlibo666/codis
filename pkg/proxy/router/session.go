@@ -4,10 +4,6 @@
 package router
 
 import (
-	"github.com/wlibo666/codis/pkg/utils/atomic2"
-	"github.com/wlibo666/codis/pkg/utils/errors"
-	"github.com/wlibo666/codis/pkg/utils/log"
-	"github.com/wlibo666/codis/pkg/proxy/redis"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -15,6 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wlibo666/codis/pkg/proxy/redis"
+	"github.com/wlibo666/codis/pkg/utils/atomic2"
+	"github.com/wlibo666/codis/pkg/utils/errors"
+	"github.com/wlibo666/codis/pkg/utils/log"
 )
 
 type Session struct {
@@ -141,13 +142,16 @@ func (s *Session) loopWriter(tasks <-chan *Request) error {
 			return err
 		}
 		if err := p.Encode(resp, len(tasks) == 0); err != nil {
-			// Add by WangChunyan
-			incrFailRequests()
-			failtime := microseconds() - s.LastOpUnix
-			incrFailOpStats(r.OpStr, failtime)
-			incrRedisFailOpStats(r.RedisAddr, r.OpStr, failtime)
-			log.Warnf("Encode failed,OP[%s],redis[%s],failtime[%d] microsecond,err:%s", r.OpStr, r.RedisAddr, failtime, err.Error())
-			return err
+			// if client close connection,not need to record error info
+			if !strings.Contains(err.Error(), "closed network") {
+				// Add by WangChunyan
+				incrFailRequests()
+				failtime := microseconds() - s.LastOpUnix
+				incrFailOpStats(r.OpStr, failtime)
+				incrRedisFailOpStats(r.RedisAddr, r.OpStr, failtime)
+				log.Warnf("Encode failed,OP[%s],redis[%s],failtime[%d] microsecond,err:%s", r.OpStr, r.RedisAddr, failtime, err.Error())
+				return err
+			}
 		}
 	}
 	return nil

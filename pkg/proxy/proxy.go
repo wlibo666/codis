@@ -18,6 +18,7 @@ import (
 
 	"github.com/wandoulabs/go-zookeeper/zk"
 	topo "github.com/wandoulabs/go-zookeeper/zk"
+	"github.com/wandoulabs/zkhelper"
 	"github.com/wlibo666/codis/pkg/models"
 	"github.com/wlibo666/codis/pkg/proxy/router"
 	"github.com/wlibo666/codis/pkg/utils/log"
@@ -232,13 +233,40 @@ func (s *Server) close() {
 	})
 }
 
+func (s *Server) watchProxyUntilSucc() {
+	for {
+		_, err := s.topo.WatchNode(path.Join(models.GetProxyPath(s.topo.ProductName), s.info.Id), s.evtbus)
+		if err != nil {
+			log.Warnf("watchProxyUntilSucc WatchNode failed,err [%s]", err.Error())
+			s.topo.reConnZk()
+			time.Sleep(time.Second * 3)
+			continue
+		}
+		return
+	}
+}
+
 func (s *Server) rewatchProxy() {
 	_, err := s.topo.WatchNode(path.Join(models.GetProxyPath(s.topo.ProductName), s.info.Id), s.evtbus)
 	if err != nil {
 		// changed WangChunyan
 		//log.PanicErrorf(err, "watch node failed")
-		log.Warn("Server rewatchProxy() failed,err [%v]", err.Error())
+		log.Warnf("Server rewatchProxy() failed,err [%v]", err.Error())
 		s.topo.reConnZk()
+		go s.watchProxyUntilSucc()
+	}
+}
+
+func (s *Server) watchActionUntilSucc() {
+	for {
+		_, err := s.topo.WatchChildren(models.GetWatchActionPath(s.topo.ProductName), s.evtbus)
+		if err != nil {
+			log.Warnf("watchActionUntilSucc WatchChildren failed,err:%s", err.Error())
+			s.topo.reConnZk()
+			time.Sleep(time.Second * 3)
+			continue
+		}
+		return
 	}
 }
 
@@ -248,8 +276,9 @@ func (s *Server) rewatchNodes() []string {
 		var empty []string
 		// changed WangChunyan
 		// log.PanicErrorf(err, "watch children failed")
-		log.Warn("Server rewatchNodes() failed,err:[%v]", err.Error())
+		log.Warnf("Server rewatchNodes() failed,err:[%v]", err.Error())
 		s.topo.reConnZk()
+		go s.watchActionUntilSucc()
 		return empty
 	}
 	return nodes
@@ -266,6 +295,7 @@ func (s *Server) register() {
 		//log.PanicErrorf(err, "create fence node failed")
 		log.Warn("Server register() create fence node failed,err: %v", err.Error())
 	}
+	zkhelper.CreateRecursive(s.topo.zkConn, models.GetSuspendProxyPath(s.topo.ProductName), "", 0, zkhelper.DefaultDirACLs())
 	log.Warn("********** Attention **********")
 	log.Warn("You should use `kill {pid}` rather than `kill -9 {pid}` to stop me,")
 	log.Warn("or the node resisted on zk will not be cleaned when I'm quiting and you must remove it manually")
@@ -472,6 +502,7 @@ func (s *Server) checkAndDoTopoChange(seq int) bool {
 }
 
 func (s *Server) processAction(e interface{}) {
+	//is proxy event
 	if strings.Index(getEventPath(e), models.GetProxyPath(s.topo.ProductName)) == 0 {
 		info, err := s.topo.GetProxyInfo(s.info.Id)
 		if err != nil {
@@ -480,12 +511,14 @@ func (s *Server) processAction(e interface{}) {
 			// 本来获取代理信息出错直接就退出了，此处改为记录信息不退出
 			//log.PanicErrorf(err, "processAction :get proxy info failed: %s", s.info.Id)
 			log.Errorf("processAction :get proxy info failed: %s,err %v", s.info.Id, err.Error())
+			s.rewatchProxy()
 			return
 		}
 		switch info.State {
 		case models.PROXY_STATE_MARK_OFFLINE:
 			log.Infof("processAction mark offline, proxy got offline event: %s", s.info.Id)
 			s.markOffline()
+			s.rewatchProxy()
 		case models.PROXY_STATE_ONLINE:
 			s.rewatchProxy()
 		default:
@@ -494,7 +527,7 @@ func (s *Server) processAction(e interface{}) {
 		}
 		return
 	}
-
+	// is migrate action event
 	//re-watch
 	nodes := s.rewatchNodes()
 

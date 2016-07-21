@@ -117,7 +117,7 @@ func (t *MigrateTask) migrateSingleSlot(slotId int, to int) error {
 		}
 	})
 	if err != nil {
-		log.ErrorErrorf(err, "migrate slot failed")
+		log.ErrorErrorf(err, "migrate slot [%d] failed", t.SlotId)
 		return err
 	}
 
@@ -149,11 +149,12 @@ func (t *MigrateTask) run() error {
 }
 
 func (t *MigrateTask) rollbackPremigrate() {
-	if s, err := models.GetSlot(t.zkConn, t.productName, t.SlotId); err == nil && s.State.Status == models.SLOT_STATUS_PRE_MIGRATE {
+	//when can not connect redis,migrate error but Status is SLOT_STATUS_MIGRATE,should set slot online to
+	if s, err := models.GetSlot(t.zkConn, t.productName, t.SlotId); err == nil /*&& s.State.Status == models.SLOT_STATUS_PRE_MIGRATE*/ {
 		s.State.Status = models.SLOT_STATUS_ONLINE
 		err = s.Update(t.zkConn)
 		if err != nil {
-			log.Warn("rollback premigrate failed", err)
+			log.Warn("rollback premigrate failed:", err)
 		} else {
 			log.Infof("rollback slot %d from premigrate to online\n", s.Id)
 		}
@@ -198,6 +199,8 @@ func (task *MigrateTask) Migrate(slot *models.Slot, fromGroup, toGroup int, onPr
 	if err != nil {
 		return err
 	}
+	PerSlotMigrateNum += 1
+	log.Infof("migrate slot[%d] to [%s], all number [%d]", slot.Id, toMaster.Addr, remain+1)
 
 	for remain > 0 {
 		if task.Delay > 0 {
@@ -215,6 +218,7 @@ func (task *MigrateTask) Migrate(slot *models.Slot, fromGroup, toGroup int, onPr
 		if err != nil {
 			return err
 		}
+		PerSlotMigrateNum += 1
 	}
 	return nil
 }

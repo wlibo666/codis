@@ -79,6 +79,10 @@ func GetActionObject(zkConn zkhelper.Conn, productName string, seq int64, act in
 
 var ErrReceiverTimeout = errors.New("receiver timeout")
 
+func GetSuspendProxyPath(productName string) string {
+	return fmt.Sprintf("/zk/codis/db_%s/proxy_suspend", productName)
+}
+
 func WaitForReceiverWithTimeout(zkConn zkhelper.Conn, productName string, actionZkPath string, proxies []ProxyInfo, timeoutInMs int) error {
 	if len(proxies) == 0 {
 		return nil
@@ -110,20 +114,19 @@ func WaitForReceiverWithTimeout(zkConn zkhelper.Conn, productName string, action
 		time.Sleep(500 * time.Millisecond)
 	}
 	log.Warn("proxies didn't responed: ", proxyIds)
-	// set offline proxies
-	// changed WangChunyan
-	// date: 2015.12.01 15:27:00
-	// 此处本来是发现没有响应的代理后将代理标记为offline
-	// 现在先注释掉标记为offline的部分，不删除action路径，则后续代理还可能收到该action
-	// 可以通过其他方式检测代理(ping/tcp连接)是否还活着，如果确认已经挂了，再设置其状态为offline
+	// if some proxy do not response for action,maybe lost watch event connection from zookeeper.
+	// put it on suspend path,when it found lost,restart.
 	for id, _ := range proxyIds {
-		log.Errorf("proxy %s is timeout for action %s", id, actionZkPath)
+		log.Errorf("proxy %s is timeout for action %s, proxy should restart.", id, actionZkPath)
+		_, err := zkhelper.CreateRecursive(zkConn, GetSuspendProxyPath(productName)+"/"+id, "", 0, zkhelper.DefaultACLs())
+		if err != nil {
+			log.Warnf("proxy[%s] is not response,it should restart,but dashboard mark it failed,err:%s", err.Error())
+		}
 		//if err := SetProxyStatus(zkConn, productName, id, PROXY_STATE_MARK_OFFLINE); err != nil {
 		//	return errors.Trace(err)
 		//}
 	}
-	return nil
-	//return ErrReceiverTimeout
+	return ErrReceiverTimeout
 }
 
 func GetActionSeqList(zkConn zkhelper.Conn, productName string) ([]int, error) {
@@ -230,7 +233,6 @@ func NewAction(zkConn zkhelper.Conn, productName string, actionType ActionType, 
 	// new action with default timeout: 30s
 	// changed WangChunyan
 	// date: 2015.12.01 18:30:00
-	// 本来超时时间为30秒，现改为60秒，因为遇到过30超时的情况，但是代理是正常的
 	return NewActionWithTimeout(zkConn, productName, actionType, target, desc, needConfirm, 30*1000)
 }
 
