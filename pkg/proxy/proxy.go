@@ -242,11 +242,13 @@ func (s *Server) watchProxyUntilSucc() {
 			time.Sleep(time.Second * 3)
 			continue
 		}
+		log.Infof("watch proxy:%s success", s.info.Id)
 		return
 	}
 }
 
 func (s *Server) rewatchProxy() {
+	log.Infof("rewatch Porxy:%s", s.info.Id)
 	_, err := s.topo.WatchNode(path.Join(models.GetProxyPath(s.topo.ProductName), s.info.Id), s.evtbus)
 	if err != nil {
 		// changed WangChunyan
@@ -266,11 +268,13 @@ func (s *Server) watchActionUntilSucc() {
 			time.Sleep(time.Second * 3)
 			continue
 		}
+		log.Infof("watch action:%s success", models.GetWatchActionPath(s.topo.ProductName))
 		return
 	}
 }
 
 func (s *Server) rewatchNodes() []string {
+	log.Infof("rewatch action nodes:%s", models.GetWatchActionPath(s.topo.ProductName))
 	nodes, err := s.topo.WatchChildren(models.GetWatchActionPath(s.topo.ProductName), s.evtbus)
 	if err != nil {
 		var empty []string
@@ -435,7 +439,7 @@ func (s *Server) onSlotRangeChange(param *models.SlotMultiSetParam) {
 }
 
 func (s *Server) onGroupChange(groupId int) {
-	log.Infof("group changed %d", groupId)
+	log.Warnf("group changed %d", groupId)
 	for i, g := range s.groups {
 		if g == groupId {
 			s.fillSlot(i)
@@ -514,17 +518,18 @@ func (s *Server) processAction(e interface{}) {
 			s.rewatchProxy()
 			return
 		}
+
 		switch info.State {
 		case models.PROXY_STATE_MARK_OFFLINE:
 			log.Infof("processAction mark offline, proxy got offline event: %s", s.info.Id)
 			s.markOffline()
-			s.rewatchProxy()
 		case models.PROXY_STATE_ONLINE:
-			s.rewatchProxy()
+			s.register()
 		default:
 			// changed WangChunyan
 			log.Panicf("unknown proxy state %v", info)
 		}
+		s.rewatchProxy()
 		return
 	}
 	// is migrate action event

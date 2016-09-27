@@ -80,7 +80,7 @@ func (top *Topology) checkZkConn() {
 		pendPorxy, _, err := top.zkConn.Children(models.GetSuspendProxyPath(top.ProductName))
 		if err != nil {
 			log.Warnf("get suspend proxy failed,now InitZkConn again, err:%s", err.Error())
-			top.InitZkConn()
+			top.reConnZk()
 			time.Sleep(time.Second * 5)
 			continue
 		}
@@ -110,7 +110,6 @@ func (top *Topology) InitZkConn() {
 		/*ZkMutexLock.Lock()
 		ZkClosedFlag = false
 		ZkMutexLock.Unlock()*/
-
 		break
 	}
 }
@@ -207,6 +206,8 @@ func (top *Topology) doWatch(evtch <-chan topo.Event, evtbus chan interface{}) {
 		//log.Panicf("session expired: %+v", e)
 		log.Warn("doWatch() event state is StateExpired,now will reconnect to zookeeper...")
 		top.reConnZk()
+		top.proxyServer.rewatchProxy()
+		top.proxyServer.rewatchNodes()
 		return
 	}
 

@@ -137,6 +137,7 @@ func GetFenceProxyMap(zkConn zkhelper.Conn, productName string) (map[string]bool
 	m := make(map[string]bool, len(children))
 	for _, fenceNode := range children {
 		m[fenceNode] = true
+		log.Debugf("GetFenceProxyMap,fence:%s", fenceNode)
 	}
 	return m, nil
 }

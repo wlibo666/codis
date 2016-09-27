@@ -149,7 +149,9 @@ func (s *Session) loopWriter(tasks <-chan *Request) error {
 				failtime := microseconds() - s.LastOpUnix
 				incrFailOpStats(r.OpStr, failtime)
 				incrRedisFailOpStats(r.RedisAddr, r.OpStr, failtime)
-				log.Warnf("Encode failed,OP[%s],redis[%s],failtime[%d] microsecond,err:%s", r.OpStr, r.RedisAddr, failtime, err.Error())
+				if !strings.Contains(err.Error(), "QUIT") {
+					log.Warnf("Encode failed,OP[%s],redis[%s],failtime[%d] microsecond,err:%s", r.OpStr, r.RedisAddr, failtime, err.Error())
+				}
 				return err
 			}
 		}

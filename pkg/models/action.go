@@ -261,6 +261,7 @@ func NewActionWithTimeout(zkConn zkhelper.Conn, productName string, actionType A
 			return errors.Trace(err)
 		}
 		for _, proxy := range proxies {
+			log.Debugf("need confirm,proxy addr:%s", proxy.Addr)
 			delete(fenceProxies, proxy.Addr)
 		}
 		if len(fenceProxies) > 0 {
