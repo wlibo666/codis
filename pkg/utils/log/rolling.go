@@ -41,8 +41,14 @@ func (r *rollingFile) roll() error {
 	r.fragSize = 0
 	r.fileFrag = (r.fileFrag + 1) % r.maxFileFrag
 	r.filePath = fmt.Sprintf("%s.%d", r.basePath, r.fileFrag)
+	var f *os.File
+	var err error
+	if r.fragSize == 0 {
+		f, err = os.OpenFile(r.filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	} else {
+		f, err = os.OpenFile(r.filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	}
 
-	f, err := os.OpenFile(r.filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		return errors.Trace(err)
 	} else {

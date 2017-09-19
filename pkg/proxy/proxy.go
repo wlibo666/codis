@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	reuse "github.com/jbenet/go-reuseport"
 	"github.com/wandoulabs/go-zookeeper/zk"
 	topo "github.com/wandoulabs/go-zookeeper/zk"
 	"github.com/wandoulabs/zkhelper"
@@ -124,7 +125,7 @@ func New(addr string, debugVarAddr string, conf *Config) *Server {
 
 	// changed WangChunyan
 	// addr为指定的IP地址，但是需要监控所有的网卡(Listen不支持指定多IP参数)
-	if l, err := net.Listen(conf.proto, ":"+strings.Split(addr, ":")[1]); err != nil {
+	if l, err := reuse.Listen("tcp" /*conf.proto*/, "0.0.0.0:"+strings.Split(addr, ":")[1]); err != nil {
 		log.PanicErrorf(err, "open listener failed")
 	} else {
 		s.listener = l

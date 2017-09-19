@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/wandoulabs/zkhelper"
 	"github.com/wlibo666/codis/pkg/utils"
 	"github.com/wlibo666/codis/pkg/utils/errors"
 	"github.com/wlibo666/codis/pkg/utils/log"
-	"github.com/wandoulabs/zkhelper"
 )
 
 const (
@@ -317,6 +318,20 @@ func (self *ServerGroup) AddServer(zkConn zkhelper.Conn, s *Server, passwd strin
 		}
 	} else if s.Type == SERVER_TYPE_SLAVE && len(masterAddr) > 0 {
 		// send command slaveof to slave
+		go func() {
+			var usedTime int = 0
+			for {
+				err := utils.SlaveOf(s.Addr, passwd, masterAddr)
+				if err == nil {
+					break
+				}
+				time.Sleep(3 * time.Second)
+				usedTime += 3
+				if usedTime >= 900 {
+					break
+				}
+			}
+		}()
 		err := utils.SlaveOf(s.Addr, passwd, masterAddr)
 		if err != nil {
 			return errors.Trace(err)
